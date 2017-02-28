@@ -1,0 +1,19 @@
+﻿main.obj : error LNK2019: unresolved external symbol __imp__glewInit referenced in function "void __cdecl initGLUT(int *,char * *)" (?initGLUT@@YAXPAHPAPAD@Z)
+main.obj : error LNK2019: unresolved external symbol __imp__glutInit@8 referenced in function "void __cdecl initGLUT(int *,char * *)" (?initGLUT@@YAXPAHPAPAD@Z)
+main.obj : error LNK2019: unresolved external symbol __imp__glutInitWindowSize@8 referenced in function "void __cdecl initGLUT(int *,char * *)" (?initGLUT@@YAXPAHPAPAD@Z)
+main.obj : error LNK2019: unresolved external symbol __imp__glutInitDisplayMode@4 referenced in function "void __cdecl initGLUT(int *,char * *)" (?initGLUT@@YAXPAHPAPAD@Z)
+main.obj : error LNK2019: unresolved external symbol __imp__glutMainLoop@0 referenced in function _main
+main.obj : error LNK2019: unresolved external symbol __imp__glutCreateWindow@4 referenced in function "void __cdecl initGLUT(int *,char * *)" (?initGLUT@@YAXPAHPAPAD@Z)
+main.obj : error LNK2019: unresolved external symbol __imp__glutSetWindowTitle@4 referenced in function "void __cdecl render(void)" (?render@@YAXXZ)
+main.obj : error LNK2019: unresolved external symbol __imp__glutPostRedisplay@0 referenced in function "void __cdecl handleSpecialKeypress(int,int,int)" (?handleSpecialKeypress@@YAXHHH@Z)
+main.obj : error LNK2019: unresolved external symbol __imp__glutSwapBuffers@0 referenced in function "void __cdecl display(void)" (?display@@YAXXZ)
+main.obj : error LNK2019: unresolved external symbol __imp__glutKeyboardFunc@4 referenced in function _main
+main.obj : error LNK2019: unresolved external symbol __imp__glutSpecialFunc@4 referenced in function _main
+main.obj : error LNK2019: unresolved external symbol __imp__glutDisplayFunc@4 referenced in function _main
+main.obj : error LNK2019: unresolved external symbol __imp__glutMotionFunc@4 referenced in function _main
+main.obj : error LNK2019: unresolved external symbol __imp__glutPassiveMotionFunc@4 referenced in function _main
+main.obj : error LNK2001: unresolved external symbol __imp____glewBindBuffer
+main.obj : error LNK2001: unresolved external symbol __imp____glewBufferData
+main.obj : error LNK2001: unresolved external symbol __imp____glewDeleteBuffers
+main.obj : error LNK2001: unresolved external symbol __imp____glewGenBuffers
+C:\Users\JIN\Documents\Visual_Studio_2013\Projects\HW3_JIN_Hongxi\stability\Debug\stability.exe : fatal error LNK1120: 18 unresolved externals

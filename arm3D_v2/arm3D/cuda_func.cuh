@@ -1,13 +1,17 @@
 #ifndef CUDAFUNC_CUH
 #define CUDAFUNC_CUH
 
-int divUp(int a, int Ta);
+typedef struct {
+	float3 o, d;
+} Ray;
 
-uchar4 colorConvert(uchar4 n);
+int divUp(int a, int Ta);
 
 int h_idxClip(int idx, int idxMax);
 
 int h_flatten(int c, int r, int s, int w, int h, int t);
+
+uchar4 colorConvert(uchar4 in);
 
 __device__
 unsigned char clip(int n);
@@ -16,13 +20,40 @@ __device__
 int idxClip(int idx, int idxMax);
 
 __device__
+int clipWithBounds(int n, int n_min, int n_max);
+
+__device__
 int flatten(int c, int r, int s, int w, int h, int t);
 
 __device__
-float ucharToFloat(uchar4 color4, char channel);
+float ucharToFloat(uchar4 color, char channel);
 
 __device__
 uchar4 floatToUchar(uchar4 color, float n, char channel);
+
+__device__
+float3 yRotate(float3 pos, float theta);
+
+__device__
+float3 zRotate(float3 pos, float theta);
+
+__device__ float3 scrIdxToPos(int c, int r, int w, int h, float zs);
+
+__device__ float3 paramRay(Ray r, float t);
+
+__device__ float planeSDF(float3 pos, float3 norm, float d);
+
+__device__
+bool rayPlaneIntersect(Ray myRay, float3 n, float dist, float *t);
+
+__device__
+bool intersectBox(Ray r, float3 boxmin, float3 boxmax, float *tnear, float *tfar);
+
+__device__
+int3 posToVolIndex(float3 pos, int3 volSize);
+
+__device__
+uchar4 rayCastShader(float *b_vol, float *m_vol, float *f_vol, int3 volSize, Ray boxRay, bool b_disp, bool m_disp, bool f_disp, float dist);
 
 __global__
 void showBufferKernel(uchar4 *img, float *buf, int3 volSize);
@@ -43,6 +74,18 @@ __global__
 void copyBufferKernel(float *buf2, float *buf1, int3 volSize);
 
 __global__
+void normBufferKernel(float *norm, float *buf2, float *buf1, int3 volSize);
+
+__global__
+void surfaceKernel(int *area, float *buf, int3 volSize);
+
+__global__
+void extremeBufferKernel(float *buf2, float *buf1, int3 volSize);
+
+__global__
+void avgBufferKernel(float *buf2, float *buf1, int3 volSize);
+
+__global__
 void fillKernel(int *d_max, int *d_min, float *buf2, float *buf1, int3 volSize);
 
 __global__
@@ -58,15 +101,6 @@ __global__
 void findBondaryKernel(float *buf2, float *buf1, int3 volSize);
 
 __global__
-void normBufferKernel(float *norm, float *buf2, float *buf1, int3 volSize);
-
-__global__
-void surfaceKernel(int *area, float *buf, int3 volSize);
-
-__global__
-void avgBufferKernel(float *buf2, float *buf1, int3 volSize);
-
-__global__
-void extremeBufferKernel(float *buf2, float *buf1, int3 volSize);
+void renderKernel(uchar4 *d_out, float *b_vol, float *m_vol, float *f_vol, int w, int h, int3 volSize, float zs, float theta, float alpha, bool b_disp, bool m_disp, bool f_disp, float dist);
 
 #endif

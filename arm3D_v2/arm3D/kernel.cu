@@ -262,3 +262,10 @@ void exportLauncher(uchar4 *d_in, int3 volSize)
 	}
 	free(img);
 }
+
+void kernelLauncher(uchar4 *d_out, float *b_vol, float *m_vol, float *f_vol, int w, int h, int3 volSize, float zs, float theta, float alpha, bool b_disp, bool m_disp, bool f_disp, float dist)
+{
+	dim3 blockSize(TX2, TY2);
+	dim3 gridSize(divUp(w, TX2), divUp(h, TY2));
+	renderKernel << <gridSize, blockSize >> >(d_out, b_vol, m_vol, f_vol, w, h, volSize, zs, theta, alpha, b_disp, m_disp, f_disp, dist);
+}

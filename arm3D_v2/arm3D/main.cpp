@@ -17,30 +17,102 @@
 #include "kernel.h"
 #include "interactions.h"
 
-int main()
+// texture and pixel objects
+GLuint pbo = 0; // OpenGL pixel buffer object
+GLuint tex = 0; // OpenGL texture object
+struct cudaGraphicsResource *cuda_pbo_resource;
+
+void render() {
+	uchar4 *d_out = 0;
+	cudaGraphicsMapResources(1, &cuda_pbo_resource, 0);
+	cudaGraphicsResourceGetMappedPointer((void **)&d_out, NULL, cuda_pbo_resource);
+	kernelLauncher(d_out, b_vol, m_vol, f_vol, W, H, volSize, zs, theta, alpha, showBone, showMuscle, showFat, dist);
+	if (print)
+	{
+		exportLauncher(d_in, volSize);
+		print = false;
+	}
+	cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0);
+	char title[128];
+	sprintf(title, "Arm Segmentation : dist = %.1f, theta = %.1f, alpha = %.1f", dist, theta, alpha);
+	glutSetWindowTitle(title);
+}
+
+void draw_texture() {
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, W, H, 0, GL_RGBA,
+		GL_UNSIGNED_BYTE, NULL);
+	glEnable(GL_TEXTURE_2D);
+	glBegin(GL_QUADS);
+	glTexCoord2f(0.0f, 0.0f); glVertex2f(0, 0);
+	glTexCoord2f(0.0f, 1.0f); glVertex2f(0, H);
+	glTexCoord2f(1.0f, 1.0f); glVertex2f(W, H);
+	glTexCoord2f(1.0f, 0.0f); glVertex2f(W, 0);
+	glEnd();
+	glDisable(GL_TEXTURE_2D);
+}
+
+void display() {
+	render();
+	draw_texture();
+	glutSwapBuffers();
+}
+
+void initGLUT(int *argc, char **argv) {
+	glutInit(argc, argv);
+	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
+	glutInitWindowSize(W, H);
+	glutCreateWindow(TITLE_STRING);
+#ifndef __APPLE__
+	glewInit();
+#endif
+}
+
+void initPixelBuffer() {
+	glGenBuffers(1, &pbo);
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
+	glBufferData(GL_PIXEL_UNPACK_BUFFER, W*H*sizeof(GLubyte) * 4, 0,
+		GL_STREAM_DRAW);
+	glGenTextures(1, &tex);
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	cudaGraphicsGLRegisterBuffer(&cuda_pbo_resource, pbo,
+		cudaGraphicsMapFlagsWriteDiscard);
+}
+
+void exitfunc() {
+	if (pbo) {
+		cudaGraphicsUnregisterResource(cuda_pbo_resource);
+		glDeleteBuffers(1, &pbo);
+		glDeleteTextures(1, &tex);
+	}
+	cudaFree(b_vol);
+	cudaFree(m_vol);
+	cudaFree(f_vol);
+	cudaFree(d_in);
+}
+
+int main(int argc, char** argv)
 {
 	cudaMalloc(&b_vol, volSize.x*volSize.y*volSize.z*sizeof(float));
 	cudaMalloc(&m_vol, volSize.x*volSize.y*volSize.z*sizeof(float));
 	cudaMalloc(&f_vol, volSize.x*volSize.y*volSize.z*sizeof(float));
 	cudaMalloc(&d_in, volSize.x*volSize.y*volSize.z*sizeof(uchar4));
 
-	printf("  Loading...\n");
 	importLauncher(d_in, volSize);
-
-	printf("  Buffering...\n");
 	boneKernelLauncher(d_in, b_vol, volSize);
-	printf("  Bone completed...\n");
 	muscleKernelLauncher(d_in, m_vol, volSize);
-	printf("  Muscle completed...\n");
 	fatKernelLauncher(d_in, f_vol, volSize);
-	printf("  Fat completed...\n");
 
-	printf("  Printing...\n");
-	exportLauncher(d_in, volSize);
+	printInstructions();
+	initGLUT(&argc, argv);
+	createMenu();
+	gluOrtho2D(0, W, H, 0);
+	glutKeyboardFunc(keyboard);
+	glutSpecialFunc(handleSpecialKeypress);
+	glutDisplayFunc(display);
+	initPixelBuffer();
+	glutMainLoop();
+	atexit(exitfunc);
 
-	cudaFree(b_vol);
-	cudaFree(m_vol);
-	cudaFree(f_vol);
-	cudaFree(d_in);
 	return 0;
 }

@@ -17,16 +17,16 @@
 #include "kernel.h"
 #include "interactions.h"
 
-// texture and pixel objects
-GLuint pbo = 0; // OpenGL pixel buffer object
-GLuint tex = 0; // OpenGL texture object
+GLuint pbo = 0;
+GLuint tex = 0;
 struct cudaGraphicsResource *cuda_pbo_resource;
 
-void render() {
+void render() 
+{
 	uchar4 *d_out = 0;
 	cudaGraphicsMapResources(1, &cuda_pbo_resource, 0);
 	cudaGraphicsResourceGetMappedPointer((void **)&d_out, NULL, cuda_pbo_resource);
-	kernelLauncher(d_out, b_vol, m_vol, f_vol, W, H, volSize, zs, theta, alpha, showBone, showMuscle, showFat, dist);
+	kernelLauncher(d_out, d_in, d_vol, b_vol, m_vol, f_vol, W, H, volSize, parSize, zs, alpha, theta, gamma, showBone, showMuscle, showFat, dist);
 	if (print)
 	{
 		exportLauncher(d_in, volSize);
@@ -34,13 +34,13 @@ void render() {
 	}
 	cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0);
 	char title[128];
-	sprintf(title, "Arm Segmentation : dist = %.1f, theta = %.1f, alpha = %.1f", dist, theta, alpha);
+	sprintf(title, "Arm Segmentation : dist = %.1f, x = %.1f, y = %.1f, z = %.1f", dist, alpha, theta, gamma);
 	glutSetWindowTitle(title);
 }
 
-void draw_texture() {
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, W, H, 0, GL_RGBA,
-		GL_UNSIGNED_BYTE, NULL);
+void draw_texture() 
+{
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, W, H, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 	glEnable(GL_TEXTURE_2D);
 	glBegin(GL_QUADS);
 	glTexCoord2f(0.0f, 0.0f); glVertex2f(0, 0);
@@ -51,13 +51,15 @@ void draw_texture() {
 	glDisable(GL_TEXTURE_2D);
 }
 
-void display() {
+void display() 
+{
 	render();
 	draw_texture();
 	glutSwapBuffers();
 }
 
-void initGLUT(int *argc, char **argv) {
+void initGLUT(int *argc, char **argv) 
+{
 	glutInit(argc, argv);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
 	glutInitWindowSize(W, H);
@@ -67,20 +69,21 @@ void initGLUT(int *argc, char **argv) {
 #endif
 }
 
-void initPixelBuffer() {
+void initPixelBuffer() 
+{
 	glGenBuffers(1, &pbo);
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
-	glBufferData(GL_PIXEL_UNPACK_BUFFER, W*H*sizeof(GLubyte) * 4, 0,
-		GL_STREAM_DRAW);
+	glBufferData(GL_PIXEL_UNPACK_BUFFER, W*H*sizeof(GLubyte) * 4, 0, GL_STREAM_DRAW);
 	glGenTextures(1, &tex);
 	glBindTexture(GL_TEXTURE_2D, tex);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	cudaGraphicsGLRegisterBuffer(&cuda_pbo_resource, pbo,
-		cudaGraphicsMapFlagsWriteDiscard);
+	cudaGraphicsGLRegisterBuffer(&cuda_pbo_resource, pbo, cudaGraphicsMapFlagsWriteDiscard);
 }
 
-void exitfunc() {
-	if (pbo) {
+void exitfunc() 
+{
+	if (pbo) 
+	{
 		cudaGraphicsUnregisterResource(cuda_pbo_resource);
 		glDeleteBuffers(1, &pbo);
 		glDeleteTextures(1, &tex);
@@ -88,6 +91,7 @@ void exitfunc() {
 	cudaFree(b_vol);
 	cudaFree(m_vol);
 	cudaFree(f_vol);
+	cudaFree(d_vol);
 	cudaFree(d_in);
 }
 
@@ -102,6 +106,9 @@ int main(int argc, char** argv)
 	boneKernelLauncher(d_in, b_vol, volSize);
 	muscleKernelLauncher(d_in, m_vol, volSize);
 	fatKernelLauncher(d_in, f_vol, volSize);
+
+	cudaMalloc(&d_vol, parSize.x*parSize.y*parSize.z*sizeof(float));
+	volumeKernelLauncher(d_vol, parSize, params);
 
 	printInstructions();
 	initGLUT(&argc, argv);

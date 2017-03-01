@@ -22,11 +22,13 @@
 
 #define DELTA 5
 
-float *b_vol = 0, *m_vol = 0, *f_vol = 0;
+float *b_vol = 0, *m_vol = 0, *f_vol = 0, *d_vol = 0;
 uchar4 *d_in = 0;
 const int3 volSize = { IMG_W, IMG_H, IMG_T };
-float zs = IMG_T;
-float dist = 0.f, theta = 0.f, alpha = 0.f;
+const int3 parSize = { IMG_W * 2.f, IMG_H * 4.f, IMG_T * 8.f };
+const float4 params = { IMG_W / 2.f, IMG_H / 2.f, IMG_T / 2.f, 1.f };
+float zs = parSize.z / 2.f;
+float dist = 0.f, theta = 0.f, alpha = 1.f, gamma = -0.5f;
 bool showBone = true, showMuscle = true, showFat = true, print = false;
 
 void mymenu(int value) 
@@ -61,6 +63,8 @@ void keyboard(unsigned char key, int x, int y)
 	if (key == 'f') showFat = !showFat;
 	if (key == 32) print = true;
 	if (key == 27) exit(0);
+	if (key == 60) gamma -= 0.1f;
+	if (key == 62) gamma += 0.1f;
 	glutPostRedisplay();
 }
 
@@ -75,16 +79,17 @@ void handleSpecialKeypress(int key, int x, int y)
 
 void printInstructions() 
 {
-	printf("  Arg Segmentation Visualizer\n"
-		"    Controls:\n"
-		"    Show/Hide bone    : b\n"
-		"    Show/Hide muscle  : m\n"
-		"    Show/Hide fat     : f\n"
-		"    Zoom out/in       : -/+\n"
-		"    Rotate view       : arrow keys\n"
-		"    Reset parameters  : Backspace\n"
-		"    Print images      : Space\n"
-		"    Exist             : Esc\n"
+	printf("  Arg Segmentation Visualizer:\n\n"
+		"    Show/Hide bone          : b\n"
+		"    Show/Hide muscle        : m\n"
+		"    Show/Hide fat           : f\n"
+		"    Zoom in/out             : + / -\n"
+		"    Rotate in x-direction   : Up / Down\n"
+		"    Rotate in y-direction   : Right / Left\n"
+		"    Rotate in z-direction   : > / <\n"
+		"    Reset parameters        : Backspace\n"
+		"    Print images            : Space\n"
+		"    Exist                   : Esc\n"
 		"    Right-click for object selection menu\n");
 }
 

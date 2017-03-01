@@ -32,16 +32,22 @@ __device__
 uchar4 floatToUchar(uchar4 color, float n, char channel);
 
 __device__
+float3 xRotate(float3 pos, float theta);
+
+__device__
 float3 yRotate(float3 pos, float theta);
 
 __device__
 float3 zRotate(float3 pos, float theta);
 
-__device__ float3 scrIdxToPos(int c, int r, int w, int h, float zs);
+__device__ 
+float3 scrIdxToPos(int c, int r, int w, int h, float zs);
 
-__device__ float3 paramRay(Ray r, float t);
+__device__ 
+float3 paramRay(Ray r, float t);
 
-__device__ float planeSDF(float3 pos, float3 norm, float d);
+__device__ 
+float planeSDF(float3 pos, float3 norm, float d);
 
 __device__
 bool rayPlaneIntersect(Ray myRay, float3 n, float dist, float *t);
@@ -53,7 +59,10 @@ __device__
 int3 posToVolIndex(float3 pos, int3 volSize);
 
 __device__
-uchar4 rayCastShader(float *b_vol, float *m_vol, float *f_vol, int3 volSize, Ray boxRay, bool b_disp, bool m_disp, bool f_disp, float dist);
+float func(int c, int r, int s, int3 volSize, float4 params);
+
+__device__
+uchar4 rayCastShader(uchar4 *d_in, float *d_vol, float *b_vol, float *m_vol, float *f_vol, int3 volSize, int3 parSize, Ray boxRay, bool b_disp, bool m_disp, bool f_disp, float dist);
 
 __global__
 void showBufferKernel(uchar4 *img, float *buf, int3 volSize);
@@ -101,6 +110,9 @@ __global__
 void findBondaryKernel(float *buf2, float *buf1, int3 volSize);
 
 __global__
-void renderKernel(uchar4 *d_out, float *b_vol, float *m_vol, float *f_vol, int w, int h, int3 volSize, float zs, float theta, float alpha, bool b_disp, bool m_disp, bool f_disp, float dist);
+void volumeKernel(float *d_vol, int3 volSize, float4 params);
+
+__global__
+void renderFloatKernel(uchar4 *d_out, uchar4 *d_in, float *d_vol, float *b_vol, float *m_vol, float *f_vol, int w, int h, int3 volSize, int3 parSize, float zs, float gamma, float theta, float alpha, bool b_disp, bool m_disp, bool f_disp, float dist);
 
 #endif

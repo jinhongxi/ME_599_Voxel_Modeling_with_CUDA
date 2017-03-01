@@ -247,7 +247,8 @@ uchar4 rayCastShader(uchar4 *d_in, float *d_vol, float *b_vol, float *m_vol, flo
 		t_f += (f_f - dist) / len;
 		pos_f = paramRay(boxRay, t_f);
 		f_f = density(f_vol, volSize, parSize, delta, pos_f);
-		/*f_m = density(m_vol, volSize, parSize, delta, pos_m);
+
+		f_m = density(m_vol, volSize, parSize, delta, pos_m);
 		t_m += (f_m - dist) / len;
 		pos_m = paramRay(boxRay, t_m);
 		f_m = density(m_vol, volSize, parSize, delta, pos_m);
@@ -255,7 +256,7 @@ uchar4 rayCastShader(uchar4 *d_in, float *d_vol, float *b_vol, float *m_vol, flo
 		f_b = density(b_vol, volSize, parSize, delta, pos_b);
 		t_b += (f_b - dist) / len;
 		pos_b = paramRay(boxRay, t_b);
-		f_b = density(b_vol, volSize, parSize, delta, pos_b);*/
+		f_b = density(b_vol, volSize, parSize, delta, pos_b);
 	}
 	
 	if (t_f < 1.f)
@@ -264,26 +265,27 @@ uchar4 rayCastShader(uchar4 *d_in, float *d_vol, float *b_vol, float *m_vol, flo
 		float3 grad_f = { (density(f_vol, volSize, parSize, delta, pos_f + EPS*ux) - density(f_vol, volSize, parSize, delta, pos_f)) / EPS,
 			(density(f_vol, volSize, parSize, delta, pos_f + EPS*uy) - density(f_vol, volSize, parSize, delta, pos_f)) / EPS,
 			(density(f_vol, volSize, parSize, delta, pos_f + EPS*uz) - density(f_vol, volSize, parSize, delta, pos_f)) / EPS };
-		/*float3 grad_m = { (density(m_vol, volSize, parSize, delta, pos_m + EPS*ux) - density(m_vol, volSize, parSize, delta, pos_m)) / EPS,
+		float3 grad_m = { (density(m_vol, volSize, parSize, delta, pos_m + EPS*ux) - density(m_vol, volSize, parSize, delta, pos_m)) / EPS,
 			(density(m_vol, volSize, parSize, delta, pos_m + EPS*uy) - density(m_vol, volSize, parSize, delta, pos_m)) / EPS,
 			(density(m_vol, volSize, parSize, delta, pos_m + EPS*uz) - density(m_vol, volSize, parSize, delta, pos_m)) / EPS };
 		float3 grad_b = { (density(b_vol, volSize, parSize, delta, pos_b + EPS*ux) - density(b_vol, volSize, parSize, delta, pos_b)) / EPS,
 			(density(b_vol, volSize, parSize, delta, pos_b + EPS*uy) - density(b_vol, volSize, parSize, delta, pos_b)) / EPS,
-			(density(b_vol, volSize, parSize, delta, pos_b + EPS*uz) - density(b_vol, volSize, parSize, delta, pos_b)) / EPS };*/
+			(density(b_vol, volSize, parSize, delta, pos_b + EPS*uz) - density(b_vol, volSize, parSize, delta, pos_b)) / EPS };
 
 		float intensity_f = -dot(normalize(boxRay.d), normalize(grad_f));
-		/*float intensity_m = -dot(normalize(boxRay.d), normalize(grad_m));
+		float intensity_m = -dot(normalize(boxRay.d), normalize(grad_m));
 		float intensity_b = -dot(normalize(boxRay.d), normalize(grad_b));
 		if (!f_disp) intensity_f = 0;
 		if (!m_disp) intensity_m = 0;
 		if (!b_disp) intensity_b = 0;
 
-		shade = make_uchar4(255 * intensity_b + 255 * intensity_m, 255 * intensity_b, 255 * intensity_b + 255 * intensity_f, 255);*/
+		//shade = make_uchar4(255 * intensity_b + 255 * intensity_m, 255 * intensity_b, 255 * intensity_b + 255 * intensity_f, 255);
 
 		int3 index = posToVolIndex(pos_f, parSize);
 		int i = flatten(index.x - delta.x, index.y - delta.y, index.z - delta.z, volSize.x, volSize.y, volSize.z);
 
 		shade = make_uchar4(d_in[i].x*intensity_f, d_in[i].y*intensity_f, d_in[i].z*intensity_f, 255);
+		//shade = make_uchar4(0*intensity_f, 0*intensity_f, 255*intensity_f, 255);
 	}
 
 	return shade;

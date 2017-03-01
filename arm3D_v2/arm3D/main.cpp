@@ -34,7 +34,7 @@ void render()
 	}
 	cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0);
 	char title[128];
-	sprintf(title, "Arm Segmentation : dist = %.1f, x = %.1f, y = %.1f, z = %.1f", dist, theta, alpha, gamma);
+	sprintf(title, "Arm Segmentation : dist = %.1f, x = %.1f, y = %.1f, z = %.1f", zs, theta, alpha, gamma);
 	glutSetWindowTitle(title);
 }
 

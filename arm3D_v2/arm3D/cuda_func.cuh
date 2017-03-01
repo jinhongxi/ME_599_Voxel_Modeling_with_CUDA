@@ -40,16 +40,13 @@ float3 yRotate(float3 pos, float theta);
 __device__
 float3 zRotate(float3 pos, float theta);
 
-__device__ 
+__device__
 float3 scrIdxToPos(int c, int r, int w, int h, float zs);
 
 __device__
-int posToImgIdx(int3 pos, int3 volSize, int3 parSize);
-
-__device__ 
 float3 paramRay(Ray r, float t);
 
-__device__ 
+__device__
 float planeSDF(float3 pos, float3 norm, float d);
 
 __device__
@@ -60,9 +57,6 @@ bool intersectBox(Ray r, float3 boxmin, float3 boxmax, float *tnear, float *tfar
 
 __device__
 int3 posToVolIndex(float3 pos, int3 volSize);
-
-__device__
-float density(float *d_vol, int3 volSize, int3 parSize, float3 pos);
 
 __device__
 float func(int c, int r, int s, int3 volSize, float4 params);

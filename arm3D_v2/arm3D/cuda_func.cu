@@ -41,8 +41,8 @@ int idxClip(int idx, int idxMax)
 	return idx >(idxMax - 1) ? (idxMax - 1) : (idx < 0 ? 0 : idx);
 }
 
-__device__ 
-int clipWithBounds(int n, int n_min, int n_max) 
+__device__
+int clipWithBounds(int n, int n_min, int n_max)
 {
 	return n > n_max ? n_max : (n < n_min ? n_min : n);
 }
@@ -54,7 +54,7 @@ int flatten(int c, int r, int s, int w, int h, int t)
 }
 
 __device__
-float ucharToFloat(uchar4 color,char channel)
+float ucharToFloat(uchar4 color, char channel)
 {
 	switch (channel)
 	{
@@ -77,7 +77,7 @@ float ucharToFloat(uchar4 color,char channel)
 		else return 0.f;
 		break;
 	}
-	case 'b': 
+	case 'b':
 	{
 		if (color.x > 150 && color.y > 150 && color.z > 150) return -1.f;
 		else return 0.f;
@@ -132,8 +132,8 @@ float3 xRotate(float3 pos, float theta)
 	return make_float3(pos.x, c*pos.y - s*pos.z, s*pos.y + c*pos.z);
 }
 
-__device__ 
-float3 yRotate(float3 pos, float theta) 
+__device__
+float3 yRotate(float3 pos, float theta)
 {
 	const float c = cosf(theta), s = sinf(theta);
 	return make_float3(s*pos.z + c*pos.x, pos.y, c*pos.z - s*pos.x);
@@ -146,26 +146,26 @@ float3 zRotate(float3 pos, float theta)
 	return make_float3(c*pos.x - s*pos.y, s*pos.x + c*pos.y, pos.z);
 }
 
-__device__ 
-float3 scrIdxToPos(int c, int r, int w, int h, float zs) 
+__device__
+float3 scrIdxToPos(int c, int r, int w, int h, float zs)
 {
 	return make_float3(c - w / 2, r - h / 2, zs);
 }
 
-__device__ 
-float3 paramRay(Ray r, float t) 
-{ 
-	return r.o + t*(r.d); 
+__device__
+float3 paramRay(Ray r, float t)
+{
+	return r.o + t*(r.d);
 }
 
-__device__ 
-float planeSDF(float3 pos, float3 norm, float d) 
+__device__
+float planeSDF(float3 pos, float3 norm, float d)
 {
 	return dot(pos, normalize(norm)) - d;
 }
 
 __device__
-bool rayPlaneIntersect(Ray myRay, float3 n, float dist, float *t) 
+bool rayPlaneIntersect(Ray myRay, float3 n, float dist, float *t)
 {
 	const float f0 = planeSDF(paramRay(myRay, 0.f), n, dist);
 	const float f1 = planeSDF(paramRay(myRay, 1.f), n, dist);
@@ -174,8 +174,8 @@ bool rayPlaneIntersect(Ray myRay, float3 n, float dist, float *t)
 	return result;
 }
 
-__device__ 
-bool intersectBox(Ray r, float3 boxmin, float3 boxmax, float *tnear, float *tfar) 
+__device__
+bool intersectBox(Ray r, float3 boxmin, float3 boxmax, float *tnear, float *tfar)
 {
 	const float3 invR = make_float3(1.0f) / r.d;
 	const float3 tbot = invR*(boxmin - r.o), ttop = invR*(boxmax - r.o);
@@ -185,22 +185,14 @@ bool intersectBox(Ray r, float3 boxmin, float3 boxmax, float *tnear, float *tfar
 	return *tfar > *tnear;
 }
 
-__device__ 
-int3 posToVolIndex(float3 pos, int3 volSize) 
+__device__
+int3 posToVolIndex(float3 pos, int3 volSize)
 {
 	return make_int3(pos.x + volSize.x / 2, pos.y + volSize.y / 2, pos.z + volSize.z / 2);
 }
 
 __device__
-int posToImgIdx(float3 pos, int3 volSize, int3 parSize)
-{
-	int3 ind = posToVolIndex(pos, parSize);
-	int3 delta = make_int3((parSize.x - volSize.x) / 2, (parSize.y - volSize.y) / 2, (parSize.z - volSize.z) / 2);
-	return flatten(ind.x - delta.x, ind.y - delta.y, ind.z - delta.z, volSize.x, volSize.y, volSize.z);
-}
-
-__device__ 
-float density(float *d_vol, int3 volSize, int3 parSize, float3 pos)
+float density(float *d_vol, int3 volSize, float3 pos)
 {
 	int3 index = posToVolIndex(pos, volSize);
 	int i = index.x, j = index.y, k = index.z;
@@ -217,8 +209,8 @@ float density(float *d_vol, int3 volSize, int3 parSize, float3 pos)
 	const float dens011 = d_vol[flatten(index.x, index.y + 1, index.z + 1, volSize.x, volSize.y, volSize.z)];
 	const float dens111 = d_vol[flatten(index.x + 1, index.y + 1, index.z + 1, volSize.x, volSize.y, volSize.z)];
 	return (1 - rem.x)*(1 - rem.y)*(1 - rem.z)*dens000 + (rem.x)*(1 - rem.y)*(1 - rem.z)*dens100 +
-		(1 - rem.x)*(rem.y)*(1 - rem.z)*dens010 + (1 - rem.x)*(1 - rem.y)*(rem.z)*dens001 
-		+ (rem.x)*(rem.y)*(1 - rem.z)*dens110 + (rem.x)*(1 - rem.y)*(rem.z)*dens101 
+		(1 - rem.x)*(rem.y)*(1 - rem.z)*dens010 + (1 - rem.x)*(1 - rem.y)*(rem.z)*dens001
+		+ (rem.x)*(rem.y)*(1 - rem.z)*dens110 + (rem.x)*(1 - rem.y)*(rem.z)*dens101
 		+ (1 - rem.x)*(rem.y)*(rem.z)*dens011 + (rem.x)*(rem.y)*(rem.z)*dens111;
 }
 
@@ -237,30 +229,33 @@ float func(int c, int r, int s, int3 volSize, float4 params)
 	}
 }
 
-__device__ 
+__device__
 uchar4 rayCastShader(uchar4 *d_in, float *d_vol, float *b_vol, float *m_vol, float *f_vol, int3 volSize, int3 parSize, Ray boxRay, bool b_disp, bool m_disp, bool f_disp, float dist)
 {
 	uchar4 shade = make_uchar4(0, 0, 0, 0);
 	float3 pos = boxRay.o;
 	float len = length(boxRay.d);
 	float t = 0.0f;
-	float f = density(d_vol, volSize, parSize, pos);
-	while (f > dist + EPS && t < 1.0f) 
+	float f = density(d_vol, parSize, pos);
+	while (f > dist + EPS && t < 1.0f)
 	{
-		f = density(d_vol, volSize, parSize, pos);
+		f = density(d_vol, parSize, pos);
 		t += (f - dist) / len;
 		pos = paramRay(boxRay, t);
-		f = density(d_vol, volSize, parSize, pos);
+		f = density(d_vol, parSize, pos);
 	}
-	if (t < 1.f) 
+	if (t < 1.f)
 	{
 		const float3 ux = make_float3(1, 0, 0), uy = make_float3(0, 1, 0), uz = make_float3(0, 0, 1);
-		float3 grad = { (density(d_vol, volSize, parSize, pos + EPS*ux) - density(d_vol, volSize, parSize, pos)) / EPS,
-			(density(d_vol, volSize, parSize, pos + EPS*uy) - density(d_vol, volSize, parSize, pos)) / EPS,
-			(density(d_vol, volSize, parSize, pos + EPS*uz) - density(d_vol, volSize, parSize, pos)) / EPS };
+		float3 grad = { (density(d_vol, parSize, pos + EPS*ux) - density(d_vol, parSize, pos)) / EPS,
+			(density(d_vol, parSize, pos + EPS*uy) - density(d_vol, parSize, pos)) / EPS,
+			(density(d_vol, parSize, pos + EPS*uz) - density(d_vol, parSize, pos)) / EPS };
 		float intensity = -dot(normalize(boxRay.d), normalize(grad));
-		int  i = posToImgIdx(pos, volSize, parSize);
+		int3 ind = posToVolIndex(pos, parSize);
+		int3 delta = make_int3((parSize.x - volSize.x) / 2, (parSize.y - volSize.y) / 2, (parSize.z - volSize.z) / 2);
+		int i = flatten(ind.x - delta.x, ind.y - delta.y, ind.z - delta.z, volSize.x, volSize.y, volSize.z);
 		shade = make_uchar4(d_in[i].x * intensity, d_in[i].y * intensity, d_in[i].z * intensity, 255 * intensity);
+
 	}
 	return shade;
 }
@@ -1081,9 +1076,9 @@ void renderFloatKernel(uchar4 *d_out, uchar4 *d_in, float *d_vol, float *b_vol, 
 	uchar4 shade;
 
 	if (!hitBox) shade = background;
-	else 
+	else
 	{
-		if (t0 < 0.0f) t0 = 0.f; 
+		if (t0 < 0.0f) t0 = 0.f;
 		const Ray boxRay = { paramRay(pixRay, t0), paramRay(pixRay, t1) - paramRay(pixRay, t0) };
 		shade = rayCastShader(d_in, d_vol, b_vol, m_vol, f_vol, volSize, parSize, boxRay, b_disp, m_disp, f_disp, dist);
 	}

@@ -31,9 +31,9 @@ float zs = parSize.z / 2.f;
 float dist = 0.f, theta = 0.f, alpha = 1.f, gamma = -0.5f;
 bool showBone = true, showMuscle = true, showFat = true, print = false;
 
-void mymenu(int value) 
+void mymenu(int value)
 {
-	switch (value) 
+	switch (value)
 	{
 	case 0: return;
 	case 1: showBone = !showBone; break;
@@ -43,17 +43,17 @@ void mymenu(int value)
 	glutPostRedisplay();
 }
 
-void createMenu() 
+void createMenu()
 {
-	glutCreateMenu(mymenu); 
-	glutAddMenuEntry("Show/Hide Tissues", 0); 
-	glutAddMenuEntry("Bone", 1); 
-	glutAddMenuEntry("Muscle", 2); 
-	glutAddMenuEntry("Fat", 3); 
-	glutAttachMenu(GLUT_RIGHT_BUTTON); 
+	glutCreateMenu(mymenu);
+	glutAddMenuEntry("Show/Hide Tissues", 0);
+	glutAddMenuEntry("Bone", 1);
+	glutAddMenuEntry("Muscle", 2);
+	glutAddMenuEntry("Fat", 3);
+	glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
 
-void keyboard(unsigned char key, int x, int y) 
+void keyboard(unsigned char key, int x, int y)
 {
 	if (key == '+') zs -= DELTA;
 	if (key == '-') zs += DELTA;
@@ -68,7 +68,7 @@ void keyboard(unsigned char key, int x, int y)
 	glutPostRedisplay();
 }
 
-void handleSpecialKeypress(int key, int x, int y) 
+void handleSpecialKeypress(int key, int x, int y)
 {
 	if (key == GLUT_KEY_LEFT) theta -= 0.1f;
 	if (key == GLUT_KEY_RIGHT) theta += 0.1f;
@@ -77,7 +77,7 @@ void handleSpecialKeypress(int key, int x, int y)
 	glutPostRedisplay();
 }
 
-void printInstructions() 
+void printInstructions()
 {
 	printf("  Arg Segmentation Visualizer:\n\n"
 		"    Show/Hide bone          : b\n"

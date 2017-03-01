@@ -81,7 +81,7 @@ void boneKernelLauncher(uchar4 *d_in, float *d_vol, int3 volSize)
 		cudaMemcpy(&h_norm, d_norm, sizeof(float), cudaMemcpyDeviceToHost);
 		copyBufferKernel << <gridSize, blockSize >> >(d_vol, buffer, volSize);
 	}
-	
+
 	size_t sharedSize_i = (size_t)(TX*TY*TZ)*sizeof(int);
 	findExmKernel << <gridSize, blockSize, sharedSize_i >> >(d_max, d_min, d_vol, volSize);
 	fillKernel << <gridSize, blockSize, sharedSize >> >(d_max, d_min, d_vol, buffer, volSize);
@@ -99,7 +99,7 @@ void boneKernelLauncher(uchar4 *d_in, float *d_vol, int3 volSize)
 	}
 	mapBufferKernel << <gridSize, blockSize >> >(d_in, d_vol, 'b', volSize);
 	//showBufferKernel << <gridSize, blockSize >> >(d_in, d_vol, volSize);
-	
+
 	cudaFree(buffer);
 	cudaFree(d_norm);
 	cudaFree(d_min);
@@ -263,7 +263,7 @@ void exportLauncher(uchar4 *d_in, int3 volSize)
 	free(img);
 }
 
-void volumeKernelLauncher(float *d_vol, int3 volSize, float4 params) 
+void volumeKernelLauncher(float *d_vol, int3 volSize, float4 params)
 {
 	dim3 blockSize(TX, TY, TZ);
 	dim3 gridSize(divUp(volSize.x, TX), divUp(volSize.y, TY), divUp(volSize.z, TZ));

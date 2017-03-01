@@ -21,24 +21,24 @@ GLuint pbo = 0;
 GLuint tex = 0;
 struct cudaGraphicsResource *cuda_pbo_resource;
 
-void render() 
+void render()
 {
 	uchar4 *d_out = 0;
 	cudaGraphicsMapResources(1, &cuda_pbo_resource, 0);
 	cudaGraphicsResourceGetMappedPointer((void **)&d_out, NULL, cuda_pbo_resource);
 	kernelLauncher(d_out, d_in, d_vol, b_vol, m_vol, f_vol, W, H, volSize, parSize, zs, alpha, theta, gamma, showBone, showMuscle, showFat, dist);
-	//if (print)
-	//{
+	if (print)
+	{
 		exportLauncher(d_in, volSize);
-	//	print = false;
-	//}
+		print = false;
+	}
 	cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0);
 	char title[128];
 	sprintf(title, "Arm Segmentation : dist = %.1f, x = %.1f, y = %.1f, z = %.1f", dist, alpha, theta, gamma);
 	glutSetWindowTitle(title);
 }
 
-void draw_texture() 
+void draw_texture()
 {
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, W, H, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 	glEnable(GL_TEXTURE_2D);
@@ -51,14 +51,14 @@ void draw_texture()
 	glDisable(GL_TEXTURE_2D);
 }
 
-void display() 
+void display()
 {
 	render();
 	draw_texture();
 	glutSwapBuffers();
 }
 
-void initGLUT(int *argc, char **argv) 
+void initGLUT(int *argc, char **argv)
 {
 	glutInit(argc, argv);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
@@ -69,7 +69,7 @@ void initGLUT(int *argc, char **argv)
 #endif
 }
 
-void initPixelBuffer() 
+void initPixelBuffer()
 {
 	glGenBuffers(1, &pbo);
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
@@ -80,9 +80,9 @@ void initPixelBuffer()
 	cudaGraphicsGLRegisterBuffer(&cuda_pbo_resource, pbo, cudaGraphicsMapFlagsWriteDiscard);
 }
 
-void exitfunc() 
+void exitfunc()
 {
-	if (pbo) 
+	if (pbo)
 	{
 		cudaGraphicsUnregisterResource(cuda_pbo_resource);
 		glDeleteBuffers(1, &pbo);

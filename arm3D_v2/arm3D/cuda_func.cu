@@ -192,23 +192,22 @@ int3 posToVolIndex(float3 pos, int3 volSize)
 }
 
 __device__
-float density(float *d_vol, int3 volSize, int3 parSize, float3 pos)
+float density(float *d_vol, int3 volSize, float3 pos)
 {
-	int3 index = posToVolIndex(pos, parSize);
-	int3 delta = make_int3((parSize.x - volSize.x) / 2, (parSize.y - volSize.y) / 2, (parSize.z - volSize.z) / 2);
+	int3 index = posToVolIndex(pos, volSize);
 	int i = index.x, j = index.y, k = index.z;
-	const int w = parSize.x, h = parSize.y, d = parSize.z;
+	const int w = volSize.x, h = volSize.y, d = volSize.z;
 	const float3 rem = fracf(pos);
 	index = make_int3(clipWithBounds(i, 0, w - 2), clipWithBounds(j, 0, h - 2), clipWithBounds(k, 0, d - 2));
 
-	const float dens000 = d_vol[flatten(index.x - delta.x, index.y - delta.y, index.z - delta.z, volSize.x, volSize.y, volSize.z)];
-	const float dens100 = d_vol[flatten(index.x + 1 - delta.x, index.y - delta.y, index.z - delta.z, volSize.x, volSize.y, volSize.z)];
-	const float dens010 = d_vol[flatten(index.x - delta.x, index.y + 1 - delta.y, index.z - delta.z, volSize.x, volSize.y, volSize.z)];
-	const float dens001 = d_vol[flatten(index.x - delta.x, index.y - delta.y, index.z + 1 - delta.z, volSize.x, volSize.y, volSize.z)];
-	const float dens110 = d_vol[flatten(index.x + 1 - delta.x, index.y + 1 - delta.y, index.z - delta.z, volSize.x, volSize.y, volSize.z)];
-	const float dens101 = d_vol[flatten(index.x + 1 - delta.x, index.y - delta.y, index.z + 1 - delta.z, volSize.x, volSize.y, volSize.z)];
-	const float dens011 = d_vol[flatten(index.x - delta.x, index.y + 1 - delta.y, index.z + 1 - delta.z, volSize.x, volSize.y, volSize.z)];
-	const float dens111 = d_vol[flatten(index.x + 1 - delta.x, index.y + 1 - delta.y, index.z + 1 - delta.z, volSize.x, volSize.y, volSize.z)];
+	const float dens000 = d_vol[flatten(index.x, index.y, index.z, volSize.x, volSize.y, volSize.z)];
+	const float dens100 = d_vol[flatten(index.x + 1, index.y, index.z, volSize.x, volSize.y, volSize.z)];
+	const float dens010 = d_vol[flatten(index.x, index.y + 1, index.z, volSize.x, volSize.y, volSize.z)];
+	const float dens001 = d_vol[flatten(index.x, index.y, index.z + 1, volSize.x, volSize.y, volSize.z)];
+	const float dens110 = d_vol[flatten(index.x + 1, index.y + 1, index.z, volSize.x, volSize.y, volSize.z)];
+	const float dens101 = d_vol[flatten(index.x + 1, index.y, index.z + 1, volSize.x, volSize.y, volSize.z)];
+	const float dens011 = d_vol[flatten(index.x, index.y + 1, index.z + 1, volSize.x, volSize.y, volSize.z)];
+	const float dens111 = d_vol[flatten(index.x + 1, index.y + 1, index.z + 1, volSize.x, volSize.y, volSize.z)];
 	return (1 - rem.x)*(1 - rem.y)*(1 - rem.z)*dens000 + (rem.x)*(1 - rem.y)*(1 - rem.z)*dens100 +
 		(1 - rem.x)*(rem.y)*(1 - rem.z)*dens010 + (1 - rem.x)*(1 - rem.y)*(rem.z)*dens001
 		+ (rem.x)*(rem.y)*(1 - rem.z)*dens110 + (rem.x)*(1 - rem.y)*(rem.z)*dens101
@@ -233,29 +232,30 @@ float func(int c, int r, int s, int3 volSize, float4 params)
 __device__
 uchar4 rayCastShader(uchar4 *d_in, float *d_vol, float *b_vol, float *m_vol, float *f_vol, int3 volSize, int3 parSize, Ray boxRay, bool b_disp, bool m_disp, bool f_disp, float dist)
 {
-	uchar4 shade = make_uchar4(200, 200, 200, 0);
+	uchar4 shade = make_uchar4(0, 0, 0, 0);
 	float3 pos = boxRay.o;
 	float len = length(boxRay.d);
 	float t = 0.0f;
-	float f = density(f_vol, volSize, parSize, pos);
+	float f = density(d_vol, parSize, pos);
 	while (f > dist + EPS && t < 1.0f)
 	{
-		f = density(f_vol, volSize, parSize, pos);
+		f = density(d_vol, parSize, pos);
 		t += (f - dist) / len;
 		pos = paramRay(boxRay, t);
-		f = density(f_vol, volSize, parSize, pos);
+		f = density(d_vol, parSize, pos);
 	}
 	if (t < 1.f)
 	{
 		const float3 ux = make_float3(1, 0, 0), uy = make_float3(0, 1, 0), uz = make_float3(0, 0, 1);
-		float3 grad = { (density(f_vol, volSize, parSize, pos + EPS*ux) - density(f_vol, volSize, parSize, pos)) / EPS,
-			(density(f_vol, volSize, parSize, pos + EPS*uy) - density(f_vol, volSize, parSize, pos)) / EPS,
-			(density(f_vol, volSize, parSize, pos + EPS*uz) - density(f_vol, volSize, parSize, pos)) / EPS };
+		float3 grad = { (density(d_vol, parSize, pos + EPS*ux) - density(d_vol, parSize, pos)) / EPS,
+			(density(d_vol, parSize, pos + EPS*uy) - density(d_vol, parSize, pos)) / EPS,
+			(density(d_vol, parSize, pos + EPS*uz) - density(d_vol, parSize, pos)) / EPS };
 		float intensity = -dot(normalize(boxRay.d), normalize(grad));
 		int3 ind = posToVolIndex(pos, parSize);
 		int3 delta = make_int3((parSize.x - volSize.x) / 2, (parSize.y - volSize.y) / 2, (parSize.z - volSize.z) / 2);
 		int i = flatten(ind.x - delta.x, ind.y - delta.y, ind.z - delta.z, volSize.x, volSize.y, volSize.z);
-		shade = make_uchar4(0, 0, 255 * intensity, 255);
+		shade = make_uchar4(d_in[i].x * intensity, d_in[i].y * intensity, d_in[i].z * intensity, 255 * intensity);
+
 	}
 	return shade;
 }
@@ -1057,7 +1057,7 @@ void renderFloatKernel(uchar4 *d_out, uchar4 *d_in, float *d_vol, float *b_vol, 
 	const int i = c + r * w;
 	if ((c >= w) || (r >= h)) return;
 
-	const uchar4 background = { 255, 255, 255, 0 };
+	const uchar4 background = { 0, 0, 0, 0 };
 	float3 source = { 0.f, 0.f, -zs };
 	float3 pix = scrIdxToPos(c, r, w, h, 2 * parSize.z - zs);
 	source = xRotate(source, alpha);

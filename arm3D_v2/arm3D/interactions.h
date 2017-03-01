@@ -25,8 +25,8 @@
 float *b_vol = 0, *m_vol = 0, *f_vol = 0, *d_vol = 0;
 uchar4 *d_in = 0;
 const int3 volSize = { IMG_W, IMG_H, IMG_T };
-const int3 parSize = { IMG_W * 4.f, IMG_H * 8.f, IMG_T * 16.f };
-const float4 params = { IMG_W, IMG_H, IMG_T, 1.f };
+const int3 parSize = { IMG_W * 2.f, IMG_H * 4.f, IMG_T * 8.f };
+const float4 params = { IMG_W / 2.f, IMG_H / 2.f, IMG_T / 2.f, 1.f };
 float zs = parSize.z / 2.f;
 float dist = 0.f, theta = 0.f, alpha = 1.f, gamma = -0.5f;
 bool showBone = true, showMuscle = true, showFat = true, print = false;

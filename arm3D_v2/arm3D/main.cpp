@@ -27,11 +27,11 @@ void render()
 	cudaGraphicsMapResources(1, &cuda_pbo_resource, 0);
 	cudaGraphicsResourceGetMappedPointer((void **)&d_out, NULL, cuda_pbo_resource);
 	kernelLauncher(d_out, d_in, d_vol, b_vol, m_vol, f_vol, W, H, volSize, parSize, zs, alpha, theta, gamma, showBone, showMuscle, showFat, dist);
-	if (print)
-	{
+	//if (print)
+	//{
 		exportLauncher(d_in, volSize);
-		print = false;
-	}
+	//	print = false;
+	//}
 	cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0);
 	char title[128];
 	sprintf(title, "Arm Segmentation : dist = %.1f, x = %.1f, y = %.1f, z = %.1f", dist, alpha, theta, gamma);

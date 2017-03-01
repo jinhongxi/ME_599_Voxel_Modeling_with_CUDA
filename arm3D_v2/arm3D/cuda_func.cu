@@ -191,8 +191,16 @@ int3 posToVolIndex(float3 pos, int3 volSize)
 	return make_int3(pos.x + volSize.x / 2, pos.y + volSize.y / 2, pos.z + volSize.z / 2);
 }
 
+__device__
+int posToImgIdx(float3 pos, int3 volSize, int3 parSize)
+{
+	int3 ind = posToVolIndex(pos, parSize);
+	int3 delta = make_int3((parSize.x - volSize.x) / 2, (parSize.y - volSize.y) / 2, (parSize.z - volSize.z) / 2);
+	return flatten(ind.x - delta.x, ind.y - delta.y, ind.z - delta.z, volSize.x, volSize.y, volSize.z);
+}
+
 __device__ 
-float density(float *d_vol, int3 volSize, float3 pos)
+float density(float *d_vol, int3 volSize, int3 parSize, float3 pos)
 {
 	int3 index = posToVolIndex(pos, volSize);
 	int i = index.x, j = index.y, k = index.z;
@@ -236,26 +244,23 @@ uchar4 rayCastShader(uchar4 *d_in, float *d_vol, float *b_vol, float *m_vol, flo
 	float3 pos = boxRay.o;
 	float len = length(boxRay.d);
 	float t = 0.0f;
-	float f = density(d_vol, parSize, pos);
+	float f = density(d_vol, volSize, parSize, pos);
 	while (f > dist + EPS && t < 1.0f) 
 	{
-		f = density(d_vol, parSize, pos);
+		f = density(d_vol, volSize, parSize, pos);
 		t += (f - dist) / len;
 		pos = paramRay(boxRay, t);
-		f = density(d_vol, parSize, pos);
+		f = density(d_vol, volSize, parSize, pos);
 	}
 	if (t < 1.f) 
 	{
 		const float3 ux = make_float3(1, 0, 0), uy = make_float3(0, 1, 0), uz = make_float3(0, 0, 1);
-		float3 grad = { (density(d_vol, parSize, pos + EPS*ux) - density(d_vol, parSize, pos)) / EPS,
-			(density(d_vol, parSize, pos + EPS*uy) - density(d_vol, parSize, pos)) / EPS,
-			(density(d_vol, parSize, pos + EPS*uz) - density(d_vol, parSize, pos)) / EPS };
+		float3 grad = { (density(d_vol, volSize, parSize, pos + EPS*ux) - density(d_vol, volSize, parSize, pos)) / EPS,
+			(density(d_vol, volSize, parSize, pos + EPS*uy) - density(d_vol, volSize, parSize, pos)) / EPS,
+			(density(d_vol, volSize, parSize, pos + EPS*uz) - density(d_vol, volSize, parSize, pos)) / EPS };
 		float intensity = -dot(normalize(boxRay.d), normalize(grad));
-		int3 ind = posToVolIndex(pos, parSize);
-		int3 delta = make_int3((parSize.x - volSize.x) / 2, (parSize.y - volSize.y) / 2, (parSize.z - volSize.z) / 2);
-		int i = flatten(ind.x - delta.x, ind.y - delta.y, ind.z - delta.z, volSize.x, volSize.y, volSize.z);
+		int  i = posToImgIdx(pos, volSize, parSize);
 		shade = make_uchar4(d_in[i].x * intensity, d_in[i].y * intensity, d_in[i].z * intensity, 255 * intensity);
-		
 	}
 	return shade;
 }

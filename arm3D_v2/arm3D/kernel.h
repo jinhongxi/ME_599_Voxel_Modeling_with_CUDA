@@ -11,7 +11,7 @@ void boneKernelLauncher(uchar4 *d_in, float *d_vol, int3 volSize);
 
 void muscleKernelLauncher(uchar4 *d_in, float *d_vol, int3 volSize);
 
-void fatKernelLauncher(uchar4 *d_in, float *d_vol, int3 volSize);
+void fatKernelLauncher(uchar4 *d_in, float *d_vol, float *m_vol, float *b_vol, int3 volSize);
 
 void exportLauncher(uchar4 *d_in, int3 volSize);
 

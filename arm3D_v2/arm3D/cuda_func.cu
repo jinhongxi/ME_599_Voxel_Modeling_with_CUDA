@@ -192,22 +192,23 @@ int3 posToVolIndex(float3 pos, int3 volSize)
 }
 
 __device__
-float density(float *d_vol, int3 volSize, float3 pos)
+float density(float *d_vol, int3 volSize, int3 parSize, int3 delta, float3 pos)
 {
-	int3 index = posToVolIndex(pos, volSize);
+	int3 index = posToVolIndex(pos, parSize);
 	int i = index.x, j = index.y, k = index.z;
-	const int w = volSize.x, h = volSize.y, d = volSize.z;
+	const int w = parSize.x, h = parSize.y, d = parSize.z;
 	const float3 rem = fracf(pos);
 	index = make_int3(clipWithBounds(i, 0, w - 2), clipWithBounds(j, 0, h - 2), clipWithBounds(k, 0, d - 2));
 
-	const float dens000 = d_vol[flatten(index.x, index.y, index.z, volSize.x, volSize.y, volSize.z)];
-	const float dens100 = d_vol[flatten(index.x + 1, index.y, index.z, volSize.x, volSize.y, volSize.z)];
-	const float dens010 = d_vol[flatten(index.x, index.y + 1, index.z, volSize.x, volSize.y, volSize.z)];
-	const float dens001 = d_vol[flatten(index.x, index.y, index.z + 1, volSize.x, volSize.y, volSize.z)];
-	const float dens110 = d_vol[flatten(index.x + 1, index.y + 1, index.z, volSize.x, volSize.y, volSize.z)];
-	const float dens101 = d_vol[flatten(index.x + 1, index.y, index.z + 1, volSize.x, volSize.y, volSize.z)];
-	const float dens011 = d_vol[flatten(index.x, index.y + 1, index.z + 1, volSize.x, volSize.y, volSize.z)];
-	const float dens111 = d_vol[flatten(index.x + 1, index.y + 1, index.z + 1, volSize.x, volSize.y, volSize.z)];
+	const float dens000 = d_vol[flatten(index.x - delta.x, index.y - delta.y, index.z - delta.z, volSize.x, volSize.y, volSize.z)];
+	const float dens100 = d_vol[flatten(index.x - delta.x + 1, index.y - delta.y, index.z - delta.z, volSize.x, volSize.y, volSize.z)];
+	const float dens010 = d_vol[flatten(index.x - delta.x, index.y - delta.y + 1, index.z - delta.z, volSize.x, volSize.y, volSize.z)];
+	const float dens001 = d_vol[flatten(index.x - delta.x, index.y - delta.y, index.z - delta.z + 1, volSize.x, volSize.y, volSize.z)];
+	const float dens110 = d_vol[flatten(index.x - delta.x + 1, index.y - delta.y + 1, index.z - delta.z, volSize.x, volSize.y, volSize.z)];
+	const float dens101 = d_vol[flatten(index.x - delta.x + 1, index.y - delta.y, index.z - delta.z + 1, volSize.x, volSize.y, volSize.z)];
+	const float dens011 = d_vol[flatten(index.x - delta.x, index.y - delta.y + 1, index.z - delta.z + 1, volSize.x, volSize.y, volSize.z)];
+	const float dens111 = d_vol[flatten(index.x - delta.x + 1, index.y - delta.y + 1, index.z - delta.z + 1, volSize.x, volSize.y, volSize.z)];
+
 	return (1 - rem.x)*(1 - rem.y)*(1 - rem.z)*dens000 + (rem.x)*(1 - rem.y)*(1 - rem.z)*dens100 +
 		(1 - rem.x)*(rem.y)*(1 - rem.z)*dens010 + (1 - rem.x)*(1 - rem.y)*(rem.z)*dens001
 		+ (rem.x)*(rem.y)*(1 - rem.z)*dens110 + (rem.x)*(1 - rem.y)*(rem.z)*dens101
@@ -232,31 +233,59 @@ float func(int c, int r, int s, int3 volSize, float4 params)
 __device__
 uchar4 rayCastShader(uchar4 *d_in, float *d_vol, float *b_vol, float *m_vol, float *f_vol, int3 volSize, int3 parSize, Ray boxRay, bool b_disp, bool m_disp, bool f_disp, float dist)
 {
-	uchar4 shade = make_uchar4(0, 0, 0, 0);
-	float3 pos = boxRay.o;
+	uchar4 shade = make_uchar4(150, 150, 150, 0);
+	int3 delta = make_int3((parSize.x - volSize.x) / 2, (parSize.y - volSize.y) / 2, (parSize.z - volSize.z) / 2);
 	float len = length(boxRay.d);
-	float t = 0.0f;
-	float f = density(d_vol, parSize, pos);
-	while (f > dist + EPS && t < 1.0f)
+
+	float3 pos_f = boxRay.o, pos_m = boxRay.o, pos_b = boxRay.o;
+	float t_f = 0.0f, t_m = 0.0f, t_b = 0.0f;
+	float f_f = density(f_vol, volSize, parSize, delta, pos_f), f_m = density(m_vol, volSize, parSize, delta, pos_m), f_b = density(b_vol, volSize, parSize, delta, pos_b);
+	
+	while (f_f > dist + EPS && t_f < 1.0f)
 	{
-		f = density(d_vol, parSize, pos);
-		t += (f - dist) / len;
-		pos = paramRay(boxRay, t);
-		f = density(d_vol, parSize, pos);
+		f_f = density(f_vol, volSize, parSize, delta, pos_f);
+		t_f += (f_f - dist) / len;
+		pos_f = paramRay(boxRay, t_f);
+		f_f = density(f_vol, volSize, parSize, delta, pos_f);
+		/*f_m = density(m_vol, volSize, parSize, delta, pos_m);
+		t_m += (f_m - dist) / len;
+		pos_m = paramRay(boxRay, t_m);
+		f_m = density(m_vol, volSize, parSize, delta, pos_m);
+
+		f_b = density(b_vol, volSize, parSize, delta, pos_b);
+		t_b += (f_b - dist) / len;
+		pos_b = paramRay(boxRay, t_b);
+		f_b = density(b_vol, volSize, parSize, delta, pos_b);*/
 	}
-	if (t < 1.f)
+	
+	if (t_f < 1.f)
 	{
 		const float3 ux = make_float3(1, 0, 0), uy = make_float3(0, 1, 0), uz = make_float3(0, 0, 1);
-		float3 grad = { (density(d_vol, parSize, pos + EPS*ux) - density(d_vol, parSize, pos)) / EPS,
-			(density(d_vol, parSize, pos + EPS*uy) - density(d_vol, parSize, pos)) / EPS,
-			(density(d_vol, parSize, pos + EPS*uz) - density(d_vol, parSize, pos)) / EPS };
-		float intensity = -dot(normalize(boxRay.d), normalize(grad));
-		int3 ind = posToVolIndex(pos, parSize);
-		int3 delta = make_int3((parSize.x - volSize.x) / 2, (parSize.y - volSize.y) / 2, (parSize.z - volSize.z) / 2);
-		int i = flatten(ind.x - delta.x, ind.y - delta.y, ind.z - delta.z, volSize.x, volSize.y, volSize.z);
-		shade = make_uchar4(d_in[i].x * intensity, d_in[i].y * intensity, d_in[i].z * intensity, 255 * intensity);
+		float3 grad_f = { (density(f_vol, volSize, parSize, delta, pos_f + EPS*ux) - density(f_vol, volSize, parSize, delta, pos_f)) / EPS,
+			(density(f_vol, volSize, parSize, delta, pos_f + EPS*uy) - density(f_vol, volSize, parSize, delta, pos_f)) / EPS,
+			(density(f_vol, volSize, parSize, delta, pos_f + EPS*uz) - density(f_vol, volSize, parSize, delta, pos_f)) / EPS };
+		/*float3 grad_m = { (density(m_vol, volSize, parSize, delta, pos_m + EPS*ux) - density(m_vol, volSize, parSize, delta, pos_m)) / EPS,
+			(density(m_vol, volSize, parSize, delta, pos_m + EPS*uy) - density(m_vol, volSize, parSize, delta, pos_m)) / EPS,
+			(density(m_vol, volSize, parSize, delta, pos_m + EPS*uz) - density(m_vol, volSize, parSize, delta, pos_m)) / EPS };
+		float3 grad_b = { (density(b_vol, volSize, parSize, delta, pos_b + EPS*ux) - density(b_vol, volSize, parSize, delta, pos_b)) / EPS,
+			(density(b_vol, volSize, parSize, delta, pos_b + EPS*uy) - density(b_vol, volSize, parSize, delta, pos_b)) / EPS,
+			(density(b_vol, volSize, parSize, delta, pos_b + EPS*uz) - density(b_vol, volSize, parSize, delta, pos_b)) / EPS };*/
 
+		float intensity_f = -dot(normalize(boxRay.d), normalize(grad_f));
+		/*float intensity_m = -dot(normalize(boxRay.d), normalize(grad_m));
+		float intensity_b = -dot(normalize(boxRay.d), normalize(grad_b));
+		if (!f_disp) intensity_f = 0;
+		if (!m_disp) intensity_m = 0;
+		if (!b_disp) intensity_b = 0;
+
+		shade = make_uchar4(255 * intensity_b + 255 * intensity_m, 255 * intensity_b, 255 * intensity_b + 255 * intensity_f, 255);*/
+
+		int3 index = posToVolIndex(pos_f, parSize);
+		int i = flatten(index.x - delta.x, index.y - delta.y, index.z - delta.z, volSize.x, volSize.y, volSize.z);
+
+		shade = make_uchar4(d_in[i].x*intensity_f, d_in[i].y*intensity_f, d_in[i].z*intensity_f, 255);
 	}
+
 	return shade;
 }
 
@@ -381,8 +410,29 @@ void mapBufferKernel(uchar4 *img, float *buf, char channel, int3 volSize)
 	const int s = threadIdx.z + blockDim.z*blockIdx.z;
 	if (c >= volSize.x || r >= volSize.y || s >= volSize.z) return;
 	const int i = flatten(c, r, s, volSize.x, volSize.y, volSize.z);
-
+	
 	img[i] = floatToUchar(img[i], buf[i], channel);
+}
+
+__global__
+void duplicateBufferKernel(uchar4 *img, int3 volSize)
+{
+	const int c = threadIdx.x + blockDim.x*blockIdx.x;
+	const int r = threadIdx.y + blockDim.y*blockIdx.y;
+	const int s = threadIdx.z + blockDim.z*blockIdx.z;
+	if (c >= volSize.x || r >= volSize.y || (s != volSize.z - 1 && s != 0)) return;
+	const int i = flatten(c, r, s, volSize.x, volSize.y, volSize.z);
+
+	if (s == volSize.z - 1)
+	{
+		const int j = flatten(c, r, volSize.z - 2, volSize.x, volSize.y, volSize.z);
+		img[i] = img[j];
+	}
+	else if (s == 0)
+	{
+		const int j = flatten(c, r, 1, volSize.x, volSize.y, volSize.z);
+		img[i] = img[j];
+	}
 }
 
 __global__
@@ -832,7 +882,11 @@ void eroseKernel(float *buf2, float *buf1, int3 volSize)
 
 	if (s_float[s_i] < 0.f)
 	{
-		if (s == volSize.z - 1)
+		if (s == volSize.z - 1 || s == 0)
+		{
+			buf2[i] = 1.f;
+		}
+		else if (s == volSize.z - 2)
 		{
 			if (s_float[flatten(s_c - 1, s_r, s_s, s_w, s_h, s_t)] > 0.f || s_float[flatten(s_c + 1, s_r, s_s, s_w, s_h, s_t)] > 0.f
 				|| s_float[flatten(s_c, s_r - 1, s_s, s_w, s_h, s_t)] > 0.f || s_float[flatten(s_c, s_r + 1, s_s, s_w, s_h, s_t)] > 0.f
@@ -847,7 +901,7 @@ void eroseKernel(float *buf2, float *buf1, int3 volSize)
 			}
 			else buf2[i] = s_float[s_i];
 		}
-		else if (s == 0)
+		else if (s == 1)
 		{
 			if (s_float[flatten(s_c - 1, s_r, s_s, s_w, s_h, s_t)] > 0.f || s_float[flatten(s_c + 1, s_r, s_s, s_w, s_h, s_t)] > 0.f
 				|| s_float[flatten(s_c, s_r - 1, s_s, s_w, s_h, s_t)] > 0.f || s_float[flatten(s_c, s_r + 1, s_s, s_w, s_h, s_t)] > 0.f
@@ -922,7 +976,11 @@ void boneCleanKernel(float *buf2, float *buf1, int3 volSize)
 
 	if (s_float[s_i] == 0.f)
 	{
-		if (s == volSize.z - 1)
+		if (s == volSize.z - 1 || s == 0)
+		{
+			buf2[i] = 1.f;
+		}
+		else if (s == volSize.z - 2)
 		{
 			if (s_float[flatten(s_c - 1, s_r, s_s, s_w, s_h, s_t)] < 1.f && s_float[flatten(s_c + 1, s_r, s_s, s_w, s_h, s_t)] < 1.f
 				&& s_float[flatten(s_c, s_r - 1, s_s, s_w, s_h, s_t)] < 1.f && s_float[flatten(s_c, s_r + 1, s_s, s_w, s_h, s_t)] < 1.f
@@ -935,7 +993,7 @@ void boneCleanKernel(float *buf2, float *buf1, int3 volSize)
 				buf2[i] = 1.f;
 			}
 		}
-		else if (s == 0)
+		else if (s == 1)
 		{
 			if (s_float[flatten(s_c - 1, s_r, s_s, s_w, s_h, s_t)] < 1.f && s_float[flatten(s_c + 1, s_r, s_s, s_w, s_h, s_t)] < 1.f
 				&& s_float[flatten(s_c, s_r - 1, s_s, s_w, s_h, s_t)] < 1.f && s_float[flatten(s_c, s_r + 1, s_s, s_w, s_h, s_t)] < 1.f
@@ -1004,7 +1062,11 @@ void findBondaryKernel(float *buf2, float *buf1, int3 volSize)
 
 	if (s_float[s_i] < 0.f)
 	{
-		if (s == volSize.z - 1)
+		if (s == volSize.z - 1 || s == 0)
+		{
+			buf2[i] = 1.f;
+		}
+		else if (s == volSize.z - 2)
 		{
 			if (s_float[flatten(s_c - 1, s_r, s_s, s_w, s_h, s_t)] >= 1.f || s_float[flatten(s_c + 1, s_r, s_s, s_w, s_h, s_t)] >= 1.f
 				|| s_float[flatten(s_c, s_r - 1, s_s, s_w, s_h, s_t)] >= 1.f || s_float[flatten(s_c, s_r + 1, s_s, s_w, s_h, s_t)] >= 1.f
@@ -1014,7 +1076,7 @@ void findBondaryKernel(float *buf2, float *buf1, int3 volSize)
 			}
 			else buf2[i] = -1.f;
 		}
-		else if (s == 0)
+		else if (s == 1)
 		{
 			if (s_float[flatten(s_c - 1, s_r, s_s, s_w, s_h, s_t)] >= 1.f || s_float[flatten(s_c + 1, s_r, s_s, s_w, s_h, s_t)] >= 1.f
 				|| s_float[flatten(s_c, s_r - 1, s_s, s_w, s_h, s_t)] >= 1.f || s_float[flatten(s_c, s_r + 1, s_s, s_w, s_h, s_t)] >= 1.f
@@ -1038,6 +1100,19 @@ void findBondaryKernel(float *buf2, float *buf1, int3 volSize)
 }
 
 __global__
+void deleteRepeatedKernel(float *f_vol, float *m_vol, float *b_vol, int3 volSize)
+{
+	const int c = threadIdx.x + blockDim.x*blockIdx.x;
+	const int r = threadIdx.y + blockDim.y*blockIdx.y;
+	const int s = threadIdx.z + blockDim.z*blockIdx.z;
+	if (c >= volSize.x || r >= volSize.y || s >= volSize.z) return;
+	const int i = flatten(c, r, s, volSize.x, volSize.y, volSize.z);
+
+	if ((b_vol[i] <= 0.f || m_vol[i] <= 0.f) && f_vol[i] <= 0.f) f_vol[i] = -f_vol[i];
+	if (b_vol[i] <= 0.f && m_vol[i] <= 0.f) m_vol[i] = -m_vol[i];
+}
+
+__global__
 void volumeKernel(float *d_vol, int3 volSize, float4 params)
 {
 	const int c = threadIdx.x + blockDim.x*blockIdx.x;
@@ -1057,7 +1132,7 @@ void renderFloatKernel(uchar4 *d_out, uchar4 *d_in, float *d_vol, float *b_vol, 
 	const int i = c + r * w;
 	if ((c >= w) || (r >= h)) return;
 
-	const uchar4 background = { 0, 0, 0, 0 };
+	const uchar4 background = { 255, 255, 255, 0 };
 	float3 source = { 0.f, 0.f, -zs };
 	float3 pix = scrIdxToPos(c, r, w, h, 2 * parSize.z - zs);
 	source = xRotate(source, alpha);

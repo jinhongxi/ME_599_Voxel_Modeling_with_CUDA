@@ -296,7 +296,7 @@ c:\program files\nvidia gpu computing toolkit\cuda\v8.0\include\host_defines.h
 c:\program files\nvidia gpu computing toolkit\cuda\v8.0\include\vector_functions.h
 c:\program files\nvidia gpu computing toolkit\cuda\v8.0\include\device_launch_parameters.h
 c:\program files\nvidia gpu computing toolkit\cuda\v8.0\include\vector_types.h
-c:\users\jin\documents\wolfram mathematica\me598\arm3d_v2\arm3d\CImg.h
+c:\users\jin\documents\visual_studio_2013\projects\cuda_exercise\arm3d_v2\arm3d\CImg.h
 C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\cstdio
 C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\stdio.h
 C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\crtdefs.h
@@ -600,5 +600,5 @@ C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\process.h
 C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\crtdefs.h
 C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\io.h
 C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\crtdefs.h
-c:\users\jin\documents\wolfram mathematica\me598\arm3d_v2\arm3d\kernel.h
-c:\users\jin\documents\wolfram mathematica\me598\arm3d_v2\arm3d\cuda_func.cuh
+c:\users\jin\documents\visual_studio_2013\projects\cuda_exercise\arm3d_v2\arm3d\kernel.h
+c:\users\jin\documents\visual_studio_2013\projects\cuda_exercise\arm3d_v2\arm3d\cuda_func.cuh

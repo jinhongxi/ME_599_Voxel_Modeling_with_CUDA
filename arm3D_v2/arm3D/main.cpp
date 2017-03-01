@@ -34,7 +34,7 @@ void render()
 	}
 	cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0);
 	char title[128];
-	sprintf(title, "Arm Segmentation : dist = %.1f, x = %.1f, y = %.1f, z = %.1f", dist, alpha, theta, gamma);
+	sprintf(title, "Arm Segmentation : dist = %.1f, x = %.1f, y = %.1f, z = %.1f", dist, theta, alpha, gamma);
 	glutSetWindowTitle(title);
 }
 
@@ -105,7 +105,7 @@ int main(int argc, char** argv)
 	importLauncher(d_in, volSize);
 	boneKernelLauncher(d_in, b_vol, volSize);
 	muscleKernelLauncher(d_in, m_vol, volSize);
-	fatKernelLauncher(d_in, f_vol, volSize);
+	fatKernelLauncher(d_in, f_vol, m_vol, b_vol, volSize);
 
 	cudaMalloc(&d_vol, parSize.x*parSize.y*parSize.z*sizeof(float));
 	volumeKernelLauncher(d_vol, parSize, params);

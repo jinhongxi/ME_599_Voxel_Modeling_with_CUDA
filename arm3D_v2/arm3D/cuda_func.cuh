@@ -77,6 +77,9 @@ __global__
 void mapBufferKernel(uchar4 *img, float *buf, char channel, int3 volSize);
 
 __global__
+void duplicateBufferKernel(uchar4 *img, int3 volSize);
+
+__global__
 void plusBufferKernel(float *buf2, float *buf1, int3 volSize);
 
 __global__
@@ -108,6 +111,9 @@ void boneCleanKernel(float *buf2, float *buf1, int3 volSize);
 
 __global__
 void findBondaryKernel(float *buf2, float *buf1, int3 volSize);
+
+__global__
+void deleteRepeatedKernel(float *f_vol, float *m_vol, float *b_vol, int3 volSize);
 
 __global__
 void volumeKernel(float *d_vol, int3 volSize, float4 params);

@@ -17,7 +17,9 @@ void importLauncher(uchar4 *d_in, int3 volSize)
 	for (int s = 0; s < volSize.z; ++s)
 	{
 		char importFile[28];
-		sprintf(importFile, "Color_arm_1/arm_%i.bmp", s + 1);
+		if (s == 0) sprintf(importFile, "Color_arm_1/arm_%i.bmp", s + 1);
+		else if (s == volSize.z - 1) sprintf(importFile, "Color_arm_1/arm_%i.bmp", s - 1);
+		else sprintf(importFile, "Color_arm_1/arm_%i.bmp", s);
 		cimg_library::CImg<unsigned char>image(importFile);
 		for (int r = 0; r < volSize.y; ++r)
 		{
@@ -191,7 +193,7 @@ void muscleKernelLauncher(uchar4 *d_in, float *d_vol, int3 volSize)
 	cudaFree(d_max);
 }
 
-void fatKernelLauncher(uchar4 *d_in, float *d_vol, int3 volSize)
+void fatKernelLauncher(uchar4 *d_in, float *d_vol, float *m_vol, float *b_vol, int3 volSize)
 {
 	float *buffer = 0, *d_norm = 0;
 	int *d_min = 0, *d_max = 0;
@@ -233,6 +235,9 @@ void fatKernelLauncher(uchar4 *d_in, float *d_vol, int3 volSize)
 	mapBufferKernel << <gridSize, blockSize >> >(d_in, d_vol, 's', volSize);
 	//showBufferKernel << <gridSize, blockSize >> >(d_in, d_vol, volSize);
 
+	duplicateBufferKernel << <gridSize, blockSize >> >(d_in, volSize);
+	//deleteRepeatedKernel << <gridSize, blockSize >> >(d_vol, m_vol, b_vol, volSize);
+
 	cudaFree(buffer);
 	cudaFree(d_norm);
 	cudaFree(d_min);
@@ -243,7 +248,7 @@ void exportLauncher(uchar4 *d_in, int3 volSize)
 {
 	uchar4 *img = (uchar4*)malloc(volSize.x*volSize.y*volSize.z*sizeof(uchar4));
 	cudaMemcpy(img, d_in, volSize.x*volSize.y*volSize.z*sizeof(uchar4), cudaMemcpyDeviceToHost);
-	for (int s = 0; s < volSize.z; ++s)
+	for (int s = 1; s < volSize.z - 1; ++s)
 	{
 		char exportFile[24];
 		cimg_library::CImg<unsigned char>imageOut(volSize.x, volSize.y, 1, 3);
@@ -257,7 +262,7 @@ void exportLauncher(uchar4 *d_in, int3 volSize)
 				imageOut(c, r, 2) = img[i].z;
 			}
 		}
-		sprintf(exportFile, "CUDA_Arm/arm_%i.bmp", s + 1);
+		sprintf(exportFile, "CUDA_Arm/arm_%i.bmp", s);
 		imageOut.save_bmp(exportFile);
 	}
 	free(img);

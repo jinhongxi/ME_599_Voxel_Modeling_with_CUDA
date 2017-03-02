@@ -94,10 +94,18 @@ void exitfunc()
 	cudaFree(f_vol);
 	cudaFree(d_vol);
 	cudaFree(d_in);
+
+	cudaEventDestroy(start);
+	cudaEventDestroy(stop);
+	cudaDeviceReset();
 }
 
 int main(int argc, char** argv)
 {
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+	cudaEventRecord(start);
+
 	cudaMalloc(&b_vol, volSize.x*volSize.y*volSize.z*sizeof(float));
 	cudaMalloc(&m_vol, volSize.x*volSize.y*volSize.z*sizeof(float));
 	cudaMalloc(&f_vol, volSize.x*volSize.y*volSize.z*sizeof(float));
@@ -111,7 +119,13 @@ int main(int argc, char** argv)
 
 	volumeKernelLauncher(d_vol, b_vol, m_vol, f_vol, volSize, showBone, showMuscle, showFat);
 
+	cudaEventRecord(stop);
+	cudaEventSynchronize(stop);
+	float cudaTime = 0.f;
+	cudaEventElapsedTime(&cudaTime, start, stop);
+
 	printInstructions();
+	printf("\n    (CUDA Time = %f Ms)\n", cudaTime);
 	initGLUT(&argc, argv);
 	createMenu();
 	gluOrtho2D(0, W, H, 0);

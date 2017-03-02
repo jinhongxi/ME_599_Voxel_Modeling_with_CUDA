@@ -216,78 +216,39 @@ float density(float *d_vol, int3 volSize, int3 parSize, int3 delta, float3 pos)
 }
 
 __device__
-float func(int c, int r, int s, int3 volSize, float4 params)
-{
-	const int3 pos0 = { volSize.x / 2, volSize.y / 2, volSize.z / 2 };
-	const float dx = c - pos0.x, dy = r - pos0.y, dz = s - pos0.z;
-
-	float x = fabsf(dx) - params.x, y = fabsf(dy) - params.y, z = fabsf(dz) - params.z;
-	if (x <= 0 && y <= 0 && z <= 0) return fmaxf(x, fmaxf(y, z));
-	else
-	{
-		x = fmaxf(x, 0), y = fmaxf(y, 0), z = fmaxf(z, 0);
-		return sqrtf(x*x + y*y + z*z);
-	}
-}
-
-__device__
-uchar4 rayCastShader(uchar4 *d_in, float *d_vol, float *b_vol, float *m_vol, float *f_vol, int3 volSize, int3 parSize, Ray boxRay, bool b_disp, bool m_disp, bool f_disp, float dist)
+uchar4 rayCastShader(uchar4 *d_in, float *f_vol, int3 volSize, int3 parSize, Ray boxRay, float dist)
 {
 	uchar4 shade = make_uchar4(150, 150, 150, 0);
 	int3 delta = make_int3((parSize.x - volSize.x) / 2, (parSize.y - volSize.y) / 2, (parSize.z - volSize.z) / 2);
 	float len = length(boxRay.d);
 
-	float3 pos_f = boxRay.o, pos_m = boxRay.o, pos_b = boxRay.o;
-	float t_f = 0.0f, t_m = 0.0f, t_b = 0.0f;
-	float f_f = density(f_vol, volSize, parSize, delta, pos_f), f_m = density(m_vol, volSize, parSize, delta, pos_m), f_b = density(b_vol, volSize, parSize, delta, pos_b);
+	float3 pos = boxRay.o;
+	float t = 0.0f;
+	float f = density(f_vol, volSize, parSize, delta, pos);
 	
-	while (f_f > dist + EPS && t_f < 1.0f)
+	while (f > dist + EPS && t < 1.0f)
 	{
-		f_f = density(f_vol, volSize, parSize, delta, pos_f);
-		t_f += (f_f - dist) / len;
-		pos_f = paramRay(boxRay, t_f);
-		f_f = density(f_vol, volSize, parSize, delta, pos_f);
-
-		f_m = density(m_vol, volSize, parSize, delta, pos_m);
-		t_m += (f_m - dist) / len;
-		pos_m = paramRay(boxRay, t_m);
-		f_m = density(m_vol, volSize, parSize, delta, pos_m);
-
-		f_b = density(b_vol, volSize, parSize, delta, pos_b);
-		t_b += (f_b - dist) / len;
-		pos_b = paramRay(boxRay, t_b);
-		f_b = density(b_vol, volSize, parSize, delta, pos_b);
+		f = density(f_vol, volSize, parSize, delta, pos);
+		t += (f - dist) / len;
+		pos = paramRay(boxRay, t);
+		f = density(f_vol, volSize, parSize, delta, pos);
 	}
-	
-	if (t_f < 1.f)
+
+	if (t < 1.f)
 	{
 		const float3 ux = make_float3(1, 0, 0), uy = make_float3(0, 1, 0), uz = make_float3(0, 0, 1);
-		float3 grad_f = { (density(f_vol, volSize, parSize, delta, pos_f + EPS*ux) - density(f_vol, volSize, parSize, delta, pos_f)) / EPS,
-			(density(f_vol, volSize, parSize, delta, pos_f + EPS*uy) - density(f_vol, volSize, parSize, delta, pos_f)) / EPS,
-			(density(f_vol, volSize, parSize, delta, pos_f + EPS*uz) - density(f_vol, volSize, parSize, delta, pos_f)) / EPS };
-		float3 grad_m = { (density(m_vol, volSize, parSize, delta, pos_m + EPS*ux) - density(m_vol, volSize, parSize, delta, pos_m)) / EPS,
-			(density(m_vol, volSize, parSize, delta, pos_m + EPS*uy) - density(m_vol, volSize, parSize, delta, pos_m)) / EPS,
-			(density(m_vol, volSize, parSize, delta, pos_m + EPS*uz) - density(m_vol, volSize, parSize, delta, pos_m)) / EPS };
-		float3 grad_b = { (density(b_vol, volSize, parSize, delta, pos_b + EPS*ux) - density(b_vol, volSize, parSize, delta, pos_b)) / EPS,
-			(density(b_vol, volSize, parSize, delta, pos_b + EPS*uy) - density(b_vol, volSize, parSize, delta, pos_b)) / EPS,
-			(density(b_vol, volSize, parSize, delta, pos_b + EPS*uz) - density(b_vol, volSize, parSize, delta, pos_b)) / EPS };
+		float3 grad = { (density(f_vol, volSize, parSize, delta, pos + EPS*ux) - density(f_vol, volSize, parSize, delta, pos)) / EPS,
+			(density(f_vol, volSize, parSize, delta, pos + EPS*uy) - density(f_vol, volSize, parSize, delta, pos)) / EPS,
+			(density(f_vol, volSize, parSize, delta, pos + EPS*uz) - density(f_vol, volSize, parSize, delta, pos)) / EPS };
 
-		float intensity_f = -dot(normalize(boxRay.d), normalize(grad_f));
-		float intensity_m = -dot(normalize(boxRay.d), normalize(grad_m));
-		float intensity_b = -dot(normalize(boxRay.d), normalize(grad_b));
-		if (!f_disp) intensity_f = 0;
-		if (!m_disp) intensity_m = 0;
-		if (!b_disp) intensity_b = 0;
+		float intensity = -dot(normalize(boxRay.d), normalize(grad));
 
-		//shade = make_uchar4(255 * intensity_b + 255 * intensity_m, 255 * intensity_b, 255 * intensity_b + 255 * intensity_f, 255);
-
-		int3 index = posToVolIndex(pos_f, parSize);
+		int3 index = posToVolIndex(pos, parSize);
 		int i = flatten(index.x - delta.x, index.y - delta.y, index.z - delta.z, volSize.x, volSize.y, volSize.z);
 
-		shade = make_uchar4(d_in[i].x*intensity_f, d_in[i].y*intensity_f, d_in[i].z*intensity_f, 255);
-		//shade = make_uchar4(0*intensity_f, 0*intensity_f, 255*intensity_f, 255);
+		shade = make_uchar4(d_in[i].x*intensity, d_in[i].y*intensity, d_in[i].z*intensity, 255);
 	}
-
+	
 	return shade;
 }
 
@@ -1102,7 +1063,7 @@ void findBondaryKernel(float *buf2, float *buf1, int3 volSize)
 }
 
 __global__
-void deleteRepeatedKernel(float *f_vol, float *m_vol, float *b_vol, int3 volSize)
+void deleteRepeatedKernel(float *f_vol, float *m_vol, int3 volSize)
 {
 	const int c = threadIdx.x + blockDim.x*blockIdx.x;
 	const int r = threadIdx.y + blockDim.y*blockIdx.y;
@@ -1110,24 +1071,11 @@ void deleteRepeatedKernel(float *f_vol, float *m_vol, float *b_vol, int3 volSize
 	if (c >= volSize.x || r >= volSize.y || s >= volSize.z) return;
 	const int i = flatten(c, r, s, volSize.x, volSize.y, volSize.z);
 
-	if ((b_vol[i] <= 0.f || m_vol[i] <= 0.f) && f_vol[i] <= 0.f) f_vol[i] = -f_vol[i];
-	if (b_vol[i] <= 0.f && m_vol[i] <= 0.f) m_vol[i] = -m_vol[i];
+	if (m_vol[i] <= 0.f && f_vol[i] <= 0.f) f_vol[i] = -f_vol[i];
 }
 
 __global__
-void volumeKernel(float *d_vol, int3 volSize, float4 params)
-{
-	const int c = threadIdx.x + blockDim.x*blockIdx.x;
-	const int r = threadIdx.y + blockDim.y*blockIdx.y;
-	const int s = threadIdx.z + blockDim.z*blockIdx.z;
-	if (c >= volSize.x || r >= volSize.y || s >= volSize.z) return;
-	const int i = flatten(c, r, s, volSize.x, volSize.y, volSize.z);
-
-	d_vol[i] = func(c, r, s, volSize, params);
-}
-
-__global__
-void renderFloatKernel(uchar4 *d_out, uchar4 *d_in, float *d_vol, float *b_vol, float *m_vol, float *f_vol, int w, int h, int3 volSize, int3 parSize, float zs, float gamma, float theta, float alpha, bool b_disp, bool m_disp, bool f_disp, float dist)
+void renderFloatKernel(uchar4 *d_out, uchar4 *d_in, float *f_vol, int w, int h, int3 volSize, int3 parSize, float zs, float gamma, float theta, float alpha, float dist)
 {
 	const int c = blockIdx.x*blockDim.x + threadIdx.x;
 	const int r = blockIdx.y*blockDim.y + threadIdx.y;
@@ -1157,8 +1105,69 @@ void renderFloatKernel(uchar4 *d_out, uchar4 *d_in, float *d_vol, float *b_vol, 
 	{
 		if (t0 < 0.0f) t0 = 0.f;
 		const Ray boxRay = { paramRay(pixRay, t0), paramRay(pixRay, t1) - paramRay(pixRay, t0) };
-		shade = rayCastShader(d_in, d_vol, b_vol, m_vol, f_vol, volSize, parSize, boxRay, b_disp, m_disp, f_disp, dist);
+		shade = rayCastShader(d_in, f_vol, volSize, parSize, boxRay, dist);
 	}
 
 	d_out[i] = shade;
+}
+
+__global__
+void iniResizeKernel(uchar4 *buffer, int3 outSize)
+{
+	const int c = threadIdx.x + blockDim.x*blockIdx.x;
+	const int r = threadIdx.y + blockDim.y*blockIdx.y;
+	const int s = threadIdx.z + blockDim.z*blockIdx.z;
+	if (c >= outSize.x || r >= outSize.y || s >= outSize.z) return;
+	const int i = flatten(c, r, s, outSize.x, outSize.y, outSize.z);
+
+	buffer[i] = { 0, 0, 0, 0 };
+}
+
+__global__
+void resizeKernel(uchar4 *d_in, uchar4 *buffer, int3 volSize, int3 outSize, int3 ratio, int3 padding)
+{
+	const int c = threadIdx.x + blockDim.x*blockIdx.x;
+	const int r = threadIdx.y + blockDim.y*blockIdx.y;
+	const int s = threadIdx.z + blockDim.z*blockIdx.z;
+	if (c >= volSize.x || r >= volSize.y || s >= volSize.z - 1 || s == 0) return;
+	const int i = flatten(c, r, s, volSize.x, volSize.y, volSize.z);
+
+	const int s_c = threadIdx.x;
+	const int s_r = threadIdx.y;
+	const int s_s = threadIdx.z;
+	const int s_w = blockDim.x;
+	const int s_h = blockDim.y;
+	const int s_t = blockDim.z;
+	const int s_i = flatten(s_c, s_r, s_s, s_w, s_h, s_t);
+
+	extern __shared__ uchar4 s_uchar[];
+
+	s_uchar[s_i] = d_in[i];
+
+	__syncthreads();
+
+	if (padding.x < 0)
+	{
+
+	}
+	if (padding.y < 0)
+	{
+
+	}
+	if (padding.z < 0)
+	{
+
+	}
+
+	for (int w = 0; w < ratio.z; ++w)
+	{
+		for (int v = 0; v < ratio.y; ++v)
+		{
+			for (int u = 0; u < ratio.x; ++u)
+			{
+				int j = flatten(c + u + padding.x / 2, r + v + padding.y / 2, s + w + padding.z / 2, outSize.x, outSize.y, outSize.z);
+				buffer[j] = s_uchar[s_i];
+			}
+		}
+	}
 }

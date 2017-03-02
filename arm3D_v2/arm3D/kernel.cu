@@ -11,7 +11,7 @@
 #define STD 0.01f
 #define DNE 3
 
-void importLauncher(uchar4 *d_in, int3 volSize)
+void importLauncher(uchar4 *d_in, int3 volSize, int3 outSize)
 {
 	uchar4 *img = (uchar4*)malloc(volSize.x*volSize.y*volSize.z*sizeof(uchar4));
 	for (int s = 0; s < volSize.z; ++s)
@@ -35,6 +35,59 @@ void importLauncher(uchar4 *d_in, int3 volSize)
 	}
 	cudaMemcpy(d_in, img, volSize.x*volSize.y*volSize.z*sizeof(uchar4), cudaMemcpyHostToDevice);
 	free(img);
+
+	uchar4 *buffer = 0;
+	cudaMalloc(&buffer, outSize.x*outSize.y*outSize.z*sizeof(uchar4));
+	dim3 blockSize(TX, TY, TZ);
+	dim3 gridSize(divUp(volSize.x, TX), divUp(volSize.y, TY), divUp(volSize.z, TZ));
+	size_t sharedSize = (size_t)(TX*TY*TZ)*sizeof(uchar4);
+
+	int3 ratio = make_int3(outSize.x / volSize.x, outSize.y / volSize.y, outSize.z / volSize.z);
+	int3 padding = make_int3(outSize.x - ratio.x*volSize.x, outSize.y - ratio.y*volSize.y, outSize.z - ratio.z*volSize.z);
+	iniResizeKernel << <gridSize, blockSize >> >(buffer, outSize);
+	resizeKernel << <gridSize, blockSize, sharedSize >> >(d_in, buffer, volSize, outSize, ratio, padding);
+
+	/*if (outSize.x >= volSize.x && outSize.y >= volSize.y && outSize.z >= volSize.z)
+	{
+	int3 delta = make_int3((outSize.x - volSize.x) / 2, (outSize.y - volSize.y) / 2, (outSize.z - volSize.z) / 2);
+	int3 padding = make_int3(outSize.x - volSize.x - 2 * delta.x, outSize.y - volSize.y - 2 * delta.y, outSize.z - volSize.z - 2 * delta.z);
+	}
+	else if (outSize.x >= volSize.x && outSize.y < volSize.y && outSize.z >= volSize.z)
+	{
+	int3 delta = make_int3((outSize.x - volSize.x) / 2, (volSize.y - outSize.y) / 2, (outSize.z - volSize.z) / 2);
+	int3 padding = make_int3(outSize.x - volSize.x - 2 * delta.x, volSize.y - outSize.y - 2 * delta.y, outSize.z - volSize.z - 2 * delta.z);
+	}
+	else if (outSize.x >= volSize.x && outSize.y >= volSize.y && outSize.z < volSize.z)
+	{
+	int3 delta = make_int3((outSize.x - volSize.x) / 2, (outSize.y - volSize.y) / 2, (volSize.z - outSize.z) / 2);
+	int3 padding = make_int3(outSize.x - volSize.x - 2 * delta.x, outSize.y - volSize.y - 2 * delta.y, volSize.z - outSize.z - 2 * delta.z);
+	}
+	else if (outSize.x >= volSize.x && outSize.y < volSize.y && outSize.z < volSize.z)
+	{
+	int3 delta = make_int3((outSize.x - volSize.x) / 2, (volSize.y - outSize.y) / 2, (volSize.z - outSize.z) / 2);
+	int3 padding = make_int3(outSize.x - volSize.x - 2 * delta.x, volSize.y - outSize.y - 2 * delta.y, volSize.z - outSize.z - 2 * delta.z);
+	}
+	else if (outSize.x < volSize.x && outSize.y >= volSize.y && outSize.z >= volSize.z)
+	{
+	int3 delta = make_int3((volSize.x - outSize.x) / 2, (outSize.y - volSize.y) / 2, (outSize.z - volSize.z) / 2);
+	int3 padding = make_int3(volSize.x - outSize.x - 2 * delta.x, outSize.y - volSize.y - 2 * delta.y, outSize.z - volSize.z - 2 * delta.z);
+	}
+	else if (outSize.x < volSize.x && outSize.y < volSize.y && outSize.z >= volSize.z)
+	{
+	int3 delta = make_int3((volSize.x - outSize.x) / 2, (volSize.y - outSize.y) / 2, (outSize.z - volSize.z) / 2);
+	int3 padding = make_int3(volSize.x - outSize.x - 2 * delta.x, volSize.y - outSize.y - 2 * delta.y, outSize.z - volSize.z - 2 * delta.z);
+	}
+	else if (outSize.x < volSize.x && outSize.y >= volSize.y && outSize.z < volSize.z)
+	{
+	int3 delta = make_int3((volSize.x - outSize.x) / 2, (outSize.y - volSize.y) / 2, (volSize.z - outSize.z) / 2);
+	int3 padding = make_int3(volSize.x - outSize.x - 2 * delta.x, outSize.y - volSize.y - 2 * delta.y, volSize.z - outSize.z - 2 * delta.z);
+	}
+	else if (outSize.x < volSize.x && outSize.y < volSize.y && outSize.z < volSize.z)
+	{
+	int3 delta = make_int3((volSize.x - outSize.x) / 2, (volSize.y - outSize.y) / 2, (volSize.z - outSize.z) / 2);
+	int3 padding = make_int3(volSize.x - outSize.x - 2 * delta.x, volSize.y - outSize.y - 2 * delta.y, volSize.z - outSize.z - 2 * delta.z);
+	}*/
+	cudaFree(buffer);
 }
 
 void boneKernelLauncher(uchar4 *d_in, float *d_vol, int3 volSize)
@@ -236,7 +289,6 @@ void fatKernelLauncher(uchar4 *d_in, float *d_vol, float *m_vol, float *b_vol, i
 	//showBufferKernel << <gridSize, blockSize >> >(d_in, d_vol, volSize);
 
 	duplicateBufferKernel << <gridSize, blockSize >> >(d_in, volSize);
-	//deleteRepeatedKernel << <gridSize, blockSize >> >(d_vol, m_vol, b_vol, volSize);
 
 	cudaFree(buffer);
 	cudaFree(d_norm);
@@ -248,6 +300,7 @@ void exportLauncher(uchar4 *d_in, int3 volSize)
 {
 	uchar4 *img = (uchar4*)malloc(volSize.x*volSize.y*volSize.z*sizeof(uchar4));
 	cudaMemcpy(img, d_in, volSize.x*volSize.y*volSize.z*sizeof(uchar4), cudaMemcpyDeviceToHost);
+
 	for (int s = 1; s < volSize.z - 1; ++s)
 	{
 		char exportFile[24];
@@ -268,16 +321,45 @@ void exportLauncher(uchar4 *d_in, int3 volSize)
 	free(img);
 }
 
-void volumeKernelLauncher(float *d_vol, int3 volSize, float4 params)
+void volumeKernelLauncher(float *d_vol, float *b_vol, float *m_vol, float *f_vol, int3 volSize, bool b_disp, bool m_disp, bool f_disp)
 {
 	dim3 blockSize(TX, TY, TZ);
 	dim3 gridSize(divUp(volSize.x, TX), divUp(volSize.y, TY), divUp(volSize.z, TZ));
-	volumeKernel << <gridSize, blockSize >> >(d_vol, volSize, params);
+
+	if ((!b_disp && !m_disp && !f_disp) || (b_disp && m_disp && f_disp))
+	{
+		copyBufferKernel << <gridSize, blockSize >> >(d_vol, f_vol, volSize);
+	}
+	else if (f_disp)
+	{
+		copyBufferKernel << <gridSize, blockSize >> >(d_vol, f_vol, volSize);
+		if (!m_disp && !b_disp) deleteRepeatedKernel << <gridSize, blockSize >> >(d_vol, m_vol, volSize);
+		else if (!m_disp && b_disp)
+		{
+			float *buffer = 0;
+			cudaMalloc(&buffer, volSize.x*volSize.y*volSize.z*sizeof(float));
+			copyBufferKernel << <gridSize, blockSize >> >(buffer, m_vol, volSize);
+			deleteRepeatedKernel << <gridSize, blockSize >> >(buffer, b_vol, volSize);
+			deleteRepeatedKernel << <gridSize, blockSize >> >(d_vol, buffer, volSize);
+			cudaFree(buffer);
+		}
+		else if (m_disp && !b_disp) deleteRepeatedKernel << <gridSize, blockSize >> >(d_vol, b_vol, volSize);
+	}
+	else if (!f_disp)
+	{
+		if (!m_disp && b_disp) copyBufferKernel << <gridSize, blockSize >> >(d_vol, b_vol, volSize);
+		else if (m_disp && !b_disp)
+		{
+			copyBufferKernel << <gridSize, blockSize >> >(d_vol, m_vol, volSize);
+			deleteRepeatedKernel << <gridSize, blockSize >> >(d_vol, b_vol, volSize);
+		}
+		else if (m_disp && b_disp) copyBufferKernel << <gridSize, blockSize >> >(d_vol, m_vol, volSize);
+	}
 }
 
-void kernelLauncher(uchar4 *d_out, uchar4 *d_in, float *d_vol, float *b_vol, float *m_vol, float *f_vol, int w, int h, int3 volSize, int3 parSize, float zs, float alpha, float theta, float gamma, bool b_disp, bool m_disp, bool f_disp, float dist)
+void kernelLauncher(uchar4 *d_out, uchar4 *d_in, float *d_vol, int w, int h, int3 volSize, int3 parSize, float zs, float alpha, float theta, float gamma, float dist)
 {
 	dim3 blockSize(TX2, TY2);
 	dim3 gridSize(divUp(w, TX2), divUp(h, TY2));
-	renderFloatKernel << <gridSize, blockSize >> >(d_out, d_in, d_vol, b_vol, m_vol, f_vol, w, h, volSize, parSize, zs, gamma, theta, alpha, b_disp, m_disp, f_disp, dist);
+	renderFloatKernel << <gridSize, blockSize >> >(d_out, d_in, d_vol, w, h, volSize, parSize, zs, gamma, theta, alpha, dist);
 }

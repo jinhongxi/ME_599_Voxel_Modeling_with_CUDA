@@ -26,11 +26,12 @@ void render()
 	uchar4 *d_out = 0;
 	cudaGraphicsMapResources(1, &cuda_pbo_resource, 0);
 	cudaGraphicsResourceGetMappedPointer((void **)&d_out, NULL, cuda_pbo_resource);
-	kernelLauncher(d_out, d_in, d_vol, b_vol, m_vol, f_vol, W, H, volSize, parSize, zs, alpha, theta, gamma, showBone, showMuscle, showFat, dist);
+	kernelLauncher(d_out, d_in, d_vol, W, H, volSize, parSize, zs, alpha, theta, gamma, dist);
 	if (print)
 	{
 		exportLauncher(d_in, volSize);
 		print = false;
+		printf("    Exported...\n");
 	}
 	cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0);
 	char title[128];
@@ -100,15 +101,15 @@ int main(int argc, char** argv)
 	cudaMalloc(&b_vol, volSize.x*volSize.y*volSize.z*sizeof(float));
 	cudaMalloc(&m_vol, volSize.x*volSize.y*volSize.z*sizeof(float));
 	cudaMalloc(&f_vol, volSize.x*volSize.y*volSize.z*sizeof(float));
+	cudaMalloc(&d_vol, volSize.x*volSize.y*volSize.z*sizeof(float));
 	cudaMalloc(&d_in, volSize.x*volSize.y*volSize.z*sizeof(uchar4));
 
-	importLauncher(d_in, volSize);
+	importLauncher(d_in, volSize, outSize);
 	boneKernelLauncher(d_in, b_vol, volSize);
 	muscleKernelLauncher(d_in, m_vol, volSize);
 	fatKernelLauncher(d_in, f_vol, m_vol, b_vol, volSize);
 
-	cudaMalloc(&d_vol, parSize.x*parSize.y*parSize.z*sizeof(float));
-	volumeKernelLauncher(d_vol, parSize, params);
+	volumeKernelLauncher(d_vol, b_vol, m_vol, f_vol, volSize, showBone, showMuscle, showFat);
 
 	printInstructions();
 	initGLUT(&argc, argv);

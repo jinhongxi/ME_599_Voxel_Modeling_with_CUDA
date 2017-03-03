@@ -59,10 +59,7 @@ __device__
 int3 posToVolIndex(float3 pos, int3 volSize);
 
 __device__
-float func(int c, int r, int s, int3 volSize, float4 params);
-
-__device__
-uchar4 rayCastShader(uchar4 *d_in, float *d_vol, float *b_vol, float *m_vol, float *f_vol, int3 volSize, int3 parSize, Ray boxRay, bool b_disp, bool m_disp, bool f_disp, float dist);
+uchar4 rayCastShader(uchar4 *d_in, float *f_vol, int3 volSize, int3 parSize, Ray boxRay, float dist);
 
 __global__
 void showBufferKernel(uchar4 *img, float *buf, int3 volSize);
@@ -75,6 +72,9 @@ void makeBufferKernel(uchar4 *img, float *buf, char channel, int3 volSize);
 
 __global__
 void mapBufferKernel(uchar4 *img, float *buf, char channel, int3 volSize);
+
+__global__
+void duplicateBufferKernel(uchar4 *img, int3 volSize);
 
 __global__
 void plusBufferKernel(float *buf2, float *buf1, int3 volSize);
@@ -110,9 +110,15 @@ __global__
 void findBondaryKernel(float *buf2, float *buf1, int3 volSize);
 
 __global__
-void volumeKernel(float *d_vol, int3 volSize, float4 params);
+void deleteRepeatedKernel(float *f_vol, float *m_vol, int3 volSize);
 
 __global__
-void renderFloatKernel(uchar4 *d_out, uchar4 *d_in, float *d_vol, float *b_vol, float *m_vol, float *f_vol, int w, int h, int3 volSize, int3 parSize, float zs, float gamma, float theta, float alpha, bool b_disp, bool m_disp, bool f_disp, float dist);
+void renderFloatKernel(uchar4 *d_out, uchar4 *d_in, float *f_vol, int w, int h, int3 volSize, int3 parSize, float zs, float gamma, float theta, float alpha, float dist);
+
+__global__
+void iniResizeKernel(uchar4 *buffer, int3 outSize);
+
+__global__
+void resizeKernel(uchar4 *d_in, uchar4 *buffer, int3 volSize, int3 outSize, int3 ratio, int3 padding);
 
 #endif

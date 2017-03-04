@@ -27,12 +27,6 @@ void render()
 	cudaGraphicsMapResources(1, &cuda_pbo_resource, 0);
 	cudaGraphicsResourceGetMappedPointer((void **)&d_out, NULL, cuda_pbo_resource);
 	kernelLauncher(d_out, d_in, d_vol, W, H, volSize, parSize, zs, alpha, theta, gamma, dist);
-	if (print)
-	{
-		exportLauncher(d_in, volSize);
-		print = false;
-		printf("    Exported...\n");
-	}
 	cudaGraphicsUnmapResources(1, &cuda_pbo_resource, 0);
 	char title[128];
 	sprintf(title, "Arm Segmentation : dist = %.1f, x = %.1f, y = %.1f, z = %.1f", zs, theta, alpha, gamma);
@@ -89,10 +83,11 @@ void exitfunc()
 		glDeleteBuffers(1, &pbo);
 		glDeleteTextures(1, &tex);
 	}
+
+	cudaFree(d_vol);
 	cudaFree(b_vol);
 	cudaFree(m_vol);
 	cudaFree(f_vol);
-	cudaFree(d_vol);
 	cudaFree(d_in);
 
 	cudaEventDestroy(start);
@@ -118,6 +113,8 @@ int main(int argc, char** argv)
 	fatKernelLauncher(d_in, f_vol, m_vol, b_vol, volSize);
 
 	volumeKernelLauncher(d_vol, b_vol, m_vol, f_vol, volSize, showBone, showMuscle, showFat);
+
+	exportLauncher(d_in, volSize);
 
 	cudaEventRecord(stop);
 	cudaEventSynchronize(stop);

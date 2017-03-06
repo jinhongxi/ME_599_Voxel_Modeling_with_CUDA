@@ -34,7 +34,7 @@ const int3 parSize = { IMG_W * 2.f, IMG_H * 4.f, IMG_T * 8.f };
 const int3 outSize = { OUT_W, OUT_H, OUT_T };
 float zs = parSize.z / 2.f;
 float dist = 0.f, theta = 0.f, alpha = 1.f, gamma = -0.5f;
-bool showBone = true, showMuscle = true, showFat = true, print = false;
+bool showBone = true, showMuscle = true, showFat = true;
 
 void mymenu(int value)
 {
@@ -64,7 +64,6 @@ void keyboard(unsigned char key, int x, int y)
 	if (key == '+') zs -= DELTA;
 	if (key == '-') zs += DELTA;
 	if (key == 8) zs = parSize.z / 2.f, theta = 0.f, alpha = 0.f, dist = 0.f; // reset values
-	if (key == 32) print = true;
 	if (key == 27) exit(0);
 	if (key == 60) theta -= 0.1f;
 	if (key == 62) theta += 0.1f;
@@ -88,7 +87,6 @@ void printInstructions()
 		"    Rotate in y-direction   : Up / Down\n"
 		"    Rotate in z-direction   : Right / Left\n"
 		"    Reset parameters        : Backspace\n"
-		"    Print images            : Space\n"
 		"    Exist                   : Esc\n"
 		"    Right-click for object selection menu\n");
 }

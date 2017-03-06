@@ -1,0 +1,50 @@
+Pre-Processing:
+  1. Import
+  2. Resize
+  3. Color Convert
+  4. Color Separate:
+	Bone = [255,255,255,255]
+	Muscle = [255,0,0,0]
+	Fat = [255,255,0,0]
+	R = bone + muscle + fat + marrow
+	G = fat + marrow
+	B = bone
+
+Bone:
+  1. Bone = B
+  2. Morphological Components
+  3. Find marrow
+  4. Bone = bone + marrow
+
+Muscle:
+  1. Muscle = R - G - B
+  2. Morphological Components
+  3. Dilation
+  4. Erosion
+
+Fat:
+  1. Fat = R
+
+Skin:
+  1. Dilate R = __10__
+
+Blurring:
+  1. Signed Distance:
+	signedDistance = ImageData[DistanceTransform[ColorNegate[i]]] - ImageData[DistanceTransform[i]]
+	skinDist = signedDistance[skin]
+	fatDist = signedDistance[fat]
+  2. blendDistance = __10__
+  3. Weight:
+	weight[dist, blendDist] = | 1, dist < -blendDist
+				  | 0, dist > blendDist
+				  | 0.5 * (1 - dist/blendDist), abs(dist)<= abs(blendDist)
+	skinWeight = weight[skinDist, blendDist]
+	fatWeight = weight[fatDist, blendDist]
+  4. Weight to Color:
+	weightToColor[weight, color] = weight * color
+	skinColor = [0,255,0,255]
+	fatColor = [0,0,255,255]
+	weightedSkin = weightToColor[skinWeight, skinColor]
+	weightedFat = weightToColor[fatWeight, fatColor]
+  5. FatAndSkin = weightedSkin + weightedFat
+  6. FatAndSkin = FatAndSkin - Muscle - Bone

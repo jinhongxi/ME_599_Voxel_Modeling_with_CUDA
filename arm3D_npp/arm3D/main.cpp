@@ -26,17 +26,10 @@ int main()
 	cudaMalloc(&d_fat, volSize.x*volSize.y*volSize.z*volSize.w*sizeof(Npp8u));
 	cudaMalloc(&d_skin, volSize.x*volSize.y*volSize.z*volSize.w*sizeof(Npp8u));
 	cudaMalloc(&d_bone, volSize.x*volSize.y*volSize.z*volSize.w*sizeof(Npp8u));
-
 	importNPP(d_img, imgSize, volSize);
+	nppLauncher(d_img, d_bone, d_muscle, d_fat, d_skin, boneDandE, muscleDandE, blendDist, skinThickness, volSize);
 
-	colorSeparateNPP(d_img, d_bone, d_muscle, d_fat, d_skin, volSize);
-	boneNPP(d_bone, boneDandE, volSize);
-	muscleNPP(d_muscle, muscleDandE, volSize);
-	fatNPP(d_fat, blendDist, volSize);
-	skinNPP(d_skin, d_fat, skinThickness, volSize);
-	trimNPP(d_bone, d_muscle, d_fat, d_skin, volSize);
 
-	imageAddNPP(d_img, d_bone, d_muscle, d_fat, d_skin, volSize);
 
 	exportNPP(d_img, volSize);
 

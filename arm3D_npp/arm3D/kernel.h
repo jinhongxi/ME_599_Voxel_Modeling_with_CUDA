@@ -24,4 +24,6 @@ void skinNPP(Npp8u *d_skin, Npp8u *d_fat, int skinThickness, int4 volSize);
 
 void trimNPP(Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int4 volSize);
 
+void nppLauncher(Npp8u *d_img, Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int *boneDandE, int *muscleDandE, int blendDist, int skinThickness, int4 volSize);
+
 #endif

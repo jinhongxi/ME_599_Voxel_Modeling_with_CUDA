@@ -104,7 +104,7 @@ void importNPP(Npp8u *d_img, int4 imgSize, int4 volSize)
 
 void exportNPP(Npp8u *d_img, int4 volSize)
 {
-	Npp8u *img = (Npp8u*)malloc(volSize.x*volSize.y*volSize.z*volSize.w*sizeof(Npp8u));;
+	Npp8u *img = (Npp8u*)malloc(volSize.x*volSize.y*volSize.z*volSize.w*sizeof(Npp8u));
 	cudaMemcpy(img, d_img, volSize.x*volSize.y*volSize.z*volSize.w*sizeof(Npp8u), cudaMemcpyDeviceToHost);
 
 	for (int s = 0; s < volSize.z; ++s)
@@ -209,36 +209,65 @@ void boneNPP(Npp8u *d_bone, int *boneDandE, int4 volSize)
 	NppiSize oSizeROI = { volSize.x, volSize.y };
 	NppiSize oMaskSize = { 3, 3 };
 	NppiPoint oAnchor = { 1, 1 };
-	const Npp8u h_mask[27] = {
-		0, 1, 0, 1, 1, 1, 0, 1, 0,
-		0, 1, 0, 1, 1, 1, 0, 1, 0,
-		0, 1, 0, 1, 1, 1, 0, 1, 0 };
-	Npp8u *pMask = 0;
-	cudaMalloc(&pMask, sizeof(h_mask));
-	cudaMemcpy(pMask, h_mask, sizeof(h_mask), cudaMemcpyHostToDevice);
+
+	Npp8u *h_mask1 = (Npp8u*)malloc(oMaskSize.width*oMaskSize.height*sizeof(Npp8u));
+	memset(h_mask1, (Npp8u)0, sizeof(h_mask1));
+	for (int n = 0; n < oMaskSize.height; ++n)
+	{
+		int i = n * oMaskSize.width + oAnchor.x;
+		h_mask1[i] = (Npp8u)1;
+	}
+	Npp8u *pMask1 = 0;
+	cudaMalloc(&pMask1, sizeof(h_mask1));
+	cudaMemcpy(pMask1, h_mask1, sizeof(h_mask1), cudaMemcpyHostToDevice);
+
+	Npp8u *h_mask2 = (Npp8u*)malloc(oMaskSize.width*oMaskSize.height*sizeof(Npp8u));
+	memset(h_mask2, (Npp8u)0, sizeof(h_mask2));
+	for (int m = 0; m < oMaskSize.width; ++m)
+	{
+		int i = oAnchor.y * oMaskSize.width + m;
+		h_mask2[i] = (Npp8u)1;
+	}
+	Npp8u *pMask2 = 0;
+	cudaMalloc(&pMask2, sizeof(h_mask2));
+	cudaMemcpy(pMask2, h_mask2, sizeof(h_mask2), cudaMemcpyHostToDevice);
 
 	for (int s = 0; s < volSize.z; ++s)
 	{
 		Npp8u *pSrc = &d_bone[s*volSize.x*volSize.y*volSize.w];
 
-		for (int i = 0; i < boneDandE[0]; ++i)
+		for (int j = 0; j < 2; ++j)
 		{
-			nppiDilate_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask, oMaskSize, oAnchor);
-		}
-		for (int i = 0; i < boneDandE[0] + boneDandE[1]; ++i)
-		{
-			nppiErode_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask, oMaskSize, oAnchor);
-		}
-		for (int i = 0; i < boneDandE[1] + boneDandE[2]; ++i)
-		{
-			nppiDilate_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask, oMaskSize, oAnchor);
-		}
-		for (int i = 0; i < boneDandE[2]; ++i)
-		{
-			nppiErode_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask, oMaskSize, oAnchor);
+			for (int i = 0; i < boneDandE[0 + 4 * j]; ++i)
+			{
+				nppiDilate_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask1, oMaskSize, oAnchor);
+			}
+			for (int i = 0; i < boneDandE[0 + 4 * j] + boneDandE[1 + 4 * j]; ++i)
+			{
+				nppiErode_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask1, oMaskSize, oAnchor);
+			}
+			for (int i = 0; i < boneDandE[1 + 4 * j]; ++i)
+			{
+				nppiDilate_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask1, oMaskSize, oAnchor);
+			}
+			for (int i = 0; i < boneDandE[2 + 4 * j]; ++i)
+			{
+				nppiDilate_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask2, oMaskSize, oAnchor);
+			}
+			for (int i = 0; i < boneDandE[2 + 4 * j] + boneDandE[3 + 4 * j]; ++i)
+			{
+				nppiErode_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask2, oMaskSize, oAnchor);
+			}
+			for (int i = 0; i < boneDandE[3 + 4 * j]; ++i)
+			{
+				nppiDilate_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask2, oMaskSize, oAnchor);
+			}
 		}
 	}
-	cudaFree(pMask);
+	free(h_mask1);
+	cudaFree(pMask1);
+	free(h_mask2);
+	cudaFree(pMask2);
 }
 
 void muscleNPP(Npp8u *d_muscle, int *muscleDandE, int4 volSize)
@@ -247,36 +276,65 @@ void muscleNPP(Npp8u *d_muscle, int *muscleDandE, int4 volSize)
 	NppiSize oSizeROI = { volSize.x, volSize.y };
 	NppiSize oMaskSize = { 3, 3 };
 	NppiPoint oAnchor = { 1, 1 };
-	const Npp8u h_mask[27] = { 
-		0, 1, 0, 1, 1, 1, 0, 1, 0,
-		0, 1, 0, 1, 1, 1, 0, 1, 0, 
-		0, 1, 0, 1, 1, 1, 0, 1, 0 };
-	Npp8u *pMask = 0;
-	cudaMalloc(&pMask, sizeof(h_mask));
-	cudaMemcpy(pMask, h_mask, sizeof(h_mask), cudaMemcpyHostToDevice);
+	
+	Npp8u *h_mask1 = (Npp8u*)malloc(oMaskSize.width*oMaskSize.height*sizeof(Npp8u));
+	memset(h_mask1, (Npp8u)0, sizeof(h_mask1));
+	for (int n = 0; n < oMaskSize.height; ++n)
+	{
+		int i = n * oMaskSize.width + oAnchor.x;
+		h_mask1[i] = (Npp8u)1;
+	}
+	Npp8u *pMask1 = 0;
+	cudaMalloc(&pMask1, sizeof(h_mask1));
+	cudaMemcpy(pMask1, h_mask1, sizeof(h_mask1), cudaMemcpyHostToDevice);
+
+	Npp8u *h_mask2 = (Npp8u*)malloc(oMaskSize.width*oMaskSize.height*sizeof(Npp8u));
+	memset(h_mask2, (Npp8u)0, sizeof(h_mask2));
+	for (int m = 0; m < oMaskSize.width; ++m)
+	{
+		int i = oAnchor.y * oMaskSize.width + m;
+		h_mask2[i] = (Npp8u)1;
+	}
+	Npp8u *pMask2 = 0;
+	cudaMalloc(&pMask2, sizeof(h_mask2));
+	cudaMemcpy(pMask2, h_mask2, sizeof(h_mask2), cudaMemcpyHostToDevice);
 
 	for (int s = 0; s < volSize.z; ++s)
 	{
 		Npp8u *pSrc = &d_muscle[s*volSize.x*volSize.y*volSize.w];
 
-		for (int i = 0; i < muscleDandE[0]; ++i)
+		for (int j = 0; j < 2; ++j)
 		{
-			nppiDilate_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask, oMaskSize, oAnchor);
-		}
-		for (int i = 0; i < muscleDandE[0] + muscleDandE[1]; ++i)
-		{
-			nppiErode_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask, oMaskSize, oAnchor);
-		}
-		for (int i = 0; i < muscleDandE[1] + muscleDandE[2]; ++i)
-		{
-			nppiDilate_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask, oMaskSize, oAnchor);
-		}
-		for (int i = 0; i < muscleDandE[2]; ++i)
-		{
-			nppiErode_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask, oMaskSize, oAnchor);
+			for (int i = 0; i < muscleDandE[0 + 4 * j]; ++i)
+			{
+				nppiDilate_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask1, oMaskSize, oAnchor);
+			}
+			for (int i = 0; i < muscleDandE[0 + 4 * j] + muscleDandE[1 + 4 * j]; ++i)
+			{
+				nppiErode_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask1, oMaskSize, oAnchor);
+			}
+			for (int i = 0; i < muscleDandE[1 + 4 * j]; ++i)
+			{
+				nppiDilate_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask1, oMaskSize, oAnchor);
+			}
+			for (int i = 0; i < muscleDandE[2 + 4 * j]; ++i)
+			{
+				nppiDilate_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask2, oMaskSize, oAnchor);
+			}
+			for (int i = 0; i < muscleDandE[2 + 4 * j] + muscleDandE[3 + 4 * j]; ++i)
+			{
+				nppiErode_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask2, oMaskSize, oAnchor);
+			}
+			for (int i = 0; i < muscleDandE[3 + 4 * j]; ++i)
+			{
+				nppiDilate_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask2, oMaskSize, oAnchor);
+			}
 		}
 	}
-	cudaFree(pMask);
+	free(h_mask1);
+	cudaFree(pMask1);
+	free(h_mask2);
+	cudaFree(pMask2);
 }
 
 void fatNPP(Npp8u *d_fat, int blendDist, int4 volSize)
@@ -308,13 +366,28 @@ void skinNPP(Npp8u *d_skin, Npp8u *d_fat, int skinThickness, int4 volSize)
 	NppiSize oSizeROI = { volSize.x, volSize.y };
 	NppiSize oMaskSize = { 3, 3 };
 	NppiPoint oAnchor = { 1, 1 };
-	const Npp8u h_mask[27] = {
-		0, 1, 0, 1, 1, 1, 0, 1, 0,
-		0, 1, 0, 1, 1, 1, 0, 1, 0,
-		0, 1, 0, 1, 1, 1, 0, 1, 0 };
-	Npp8u *pMask = 0;
-	cudaMalloc(&pMask, sizeof(h_mask));
-	cudaMemcpy(pMask, h_mask, sizeof(h_mask), cudaMemcpyHostToDevice);
+	
+	Npp8u *h_mask1 = (Npp8u*)malloc(oMaskSize.width*oMaskSize.height*sizeof(Npp8u));
+	memset(h_mask1, (Npp8u)0, sizeof(h_mask1));
+	for (int n = 0; n < oMaskSize.height; ++n)
+	{
+		int i = n * oMaskSize.width + oAnchor.x;
+		h_mask1[i] = (Npp8u)1;
+	}
+	Npp8u *pMask1 = 0;
+	cudaMalloc(&pMask1, sizeof(h_mask1));
+	cudaMemcpy(pMask1, h_mask1, sizeof(h_mask1), cudaMemcpyHostToDevice);
+
+	Npp8u *h_mask2 = (Npp8u*)malloc(oMaskSize.width*oMaskSize.height*sizeof(Npp8u));
+	memset(h_mask2, (Npp8u)0, sizeof(h_mask2));
+	for (int m = 0; m < oMaskSize.width; ++m)
+	{
+		int i = oAnchor.y * oMaskSize.width + m;
+		h_mask2[i] = (Npp8u)1;
+	}
+	Npp8u *pMask2 = 0;
+	cudaMalloc(&pMask2, sizeof(h_mask2));
+	cudaMemcpy(pMask2, h_mask2, sizeof(h_mask2), cudaMemcpyHostToDevice);
 
 	for (int s = 0; s < volSize.z; ++s)
 	{
@@ -322,10 +395,14 @@ void skinNPP(Npp8u *d_skin, Npp8u *d_fat, int skinThickness, int4 volSize)
 		
 		for (int i = 0; i < skinThickness; ++i)
 		{
-			nppiDilate_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask, oMaskSize, oAnchor);
+			nppiDilate_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask1, oMaskSize, oAnchor);
+			nppiDilate_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask2, oMaskSize, oAnchor);
 		}
 	}
-	cudaFree(pMask);
+	free(h_mask1);
+	cudaFree(pMask1);
+	free(h_mask2);
+	cudaFree(pMask2);
 }
 
 void trimNPP(Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int4 volSize)
@@ -372,4 +449,17 @@ void trimNPP(Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int4 v
 		nppiSub_8u_C3IRSfs(pDst2, nStep, pSrc1, nStep, oSizeROI, 0);
 	}
 	cudaFree(pDst2);
+}
+
+void nppLauncher(Npp8u *d_img, Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int *boneDandE, int *muscleDandE, int blendDist, int skinThickness, int4 volSize)
+{
+	colorSeparateNPP(d_img, d_bone, d_muscle, d_fat, d_skin, volSize);
+
+	boneNPP(d_bone, boneDandE, volSize);
+	muscleNPP(d_muscle, muscleDandE, volSize);
+	fatNPP(d_fat, blendDist, volSize);
+	skinNPP(d_skin, d_fat, skinThickness, volSize);
+	trimNPP(d_bone, d_muscle, d_fat, d_skin, volSize);
+
+	imageAddNPP(d_img, d_bone, d_muscle, d_fat, d_skin, volSize);
 }

@@ -341,6 +341,8 @@ void fatNPP(Npp8u *d_fat, int blendDist, int4 volSize)
 {
 	Npp32s nStep = volSize.x*volSize.w*sizeof(Npp8u);
 	NppiSize oSizeROI = { volSize.x, volSize.y };
+	Npp8u *pDst = 0;
+	cudaMalloc(&pDst, volSize.x*volSize.y*volSize.w*sizeof(Npp8u));
 	NppiSize oKernelSize = { 3, 3 };
 	NppiPoint oAnchor = { 1, 1 };
 	const Npp32s h_Kernel[9] = { 0, 1, 0, 1, 1, 1, 0, 1, 0 };
@@ -352,12 +354,16 @@ void fatNPP(Npp8u *d_fat, int blendDist, int4 volSize)
 	for (int s = 0; s < volSize.z; ++s)
 	{
 		Npp8u *pSrc = &d_fat[s*volSize.x*volSize.y*volSize.w];
+		cudaMemcpy(pDst, pSrc, sizeof(pDst), cudaMemcpyDeviceToDevice);
 		for (int i = 0; i < blendDist; ++i)
 		{
 			nppiFilter_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pKernel, oKernelSize, oAnchor, nDivisor);
 		}
+		nppiSub_8u_C3IRSfs(pSrc, nStep, pDst, nStep, oSizeROI, 0);
+		nppiSub_8u_C3IRSfs(pDst, nStep, pSrc, nStep, oSizeROI, 0);
 	}
 	cudaFree(pKernel);
+	cudaFree(pDst);
 }
 
 void skinNPP(Npp8u *d_skin, Npp8u *d_fat, int skinThickness, int4 volSize)
@@ -453,13 +459,50 @@ void trimNPP(Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int4 v
 
 void nppLauncher(Npp8u *d_img, Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int *boneDandE, int *muscleDandE, int blendDist, int skinThickness, int4 volSize)
 {
-	colorSeparateNPP(d_img, d_bone, d_muscle, d_fat, d_skin, volSize);
-
 	boneNPP(d_bone, boneDandE, volSize);
 	muscleNPP(d_muscle, muscleDandE, volSize);
 	fatNPP(d_fat, blendDist, volSize);
 	skinNPP(d_skin, d_fat, skinThickness, volSize);
 	trimNPP(d_bone, d_muscle, d_fat, d_skin, volSize);
-
 	imageAddNPP(d_img, d_bone, d_muscle, d_fat, d_skin, volSize);
+}
+
+void boundaryLauncher(Npp8u *d_bound, Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int4 volSize, bool showBone, bool showMuscle, bool showFat, bool showSkin)
+{
+	Npp32s nStep = volSize.x*volSize.w*sizeof(Npp8u);
+	NppiSize oSizeROI = { volSize.x, volSize.y };
+	Npp8u *pDst2 = 0;
+	cudaMalloc(&pDst2, volSize.x*volSize.y*volSize.w*sizeof(Npp8u));
+
+	for (int s = 0; s < volSize.z; ++s)
+	{
+		Npp8u *pDst = &d_bound[s*volSize.x*volSize.y*volSize.w];
+		cudaMemset(pDst, (Npp8u)0, volSize.x*volSize.y*volSize.w*sizeof(Npp8u));
+
+		if (showBone)
+		{
+			Npp8u *pSrc = &d_bone[s*volSize.x*volSize.y*volSize.w];
+			nppiFilterLaplace_8u_C3R(pSrc, nStep, pDst2, nStep, oSizeROI, NPP_MASK_SIZE_3_X_3);
+			nppiAdd_8u_C3IRSfs(pDst2, nStep, pDst, nStep, oSizeROI, 0);
+		}
+		if (showMuscle)
+		{
+			Npp8u *pSrc = &d_muscle[s*volSize.x*volSize.y*volSize.w];
+			nppiFilterLaplace_8u_C3R(pSrc, nStep, pDst2, nStep, oSizeROI, NPP_MASK_SIZE_3_X_3);
+			nppiAdd_8u_C3IRSfs(pDst2, nStep, pDst, nStep, oSizeROI, 0);
+		}
+		if (showFat)
+		{
+			Npp8u *pSrc = &d_fat[s*volSize.x*volSize.y*volSize.w];
+			nppiFilterLaplace_8u_C3R(pSrc, nStep, pDst2, nStep, oSizeROI, NPP_MASK_SIZE_3_X_3);
+			nppiAdd_8u_C3IRSfs(pDst2, nStep, pDst, nStep, oSizeROI, 0);
+		}
+		if (showSkin)
+		{
+			Npp8u *pSrc = &d_skin[s*volSize.x*volSize.y*volSize.w];
+			nppiFilterLaplace_8u_C3R(pSrc, nStep, pDst2, nStep, oSizeROI, NPP_MASK_SIZE_3_X_3);
+			nppiAdd_8u_C3IRSfs(pDst2, nStep, pDst, nStep, oSizeROI, 0);
+		}
+	}
+	cudaFree(pDst2);
 }

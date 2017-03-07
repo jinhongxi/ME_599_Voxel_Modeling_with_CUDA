@@ -1,10 +1,4 @@
-﻿  main.cpp
-c:\users\jin\documents\visual_studio_2013\projects\cuda_exercise\arm3d_v2\arm3d\interactions.h(33): warning C4244: 'initializing' : conversion from 'float' to 'int', possible loss of data
-main.cpp(32): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
-          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\include\stdio.h(356) : see declaration of 'sprintf'
-  Generating code
-  Finished generating code
-  arm3D.vcxproj -> C:\Users\JIN\Documents\Visual_Studio_2013\Projects\CUDA_Exercise\arm3D_v2\x64\Release\arm3D.exe
+﻿  arm3D.vcxproj -> C:\Users\JIN\Documents\Visual_Studio_2013\Projects\CUDA_Exercise\arm3D_v2\x64\Release\arm3D.exe
   copy "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v8.0\bin\cudart*.dll" "C:\Users\JIN\Documents\Visual_Studio_2013\Projects\CUDA_Exercise\arm3D_v2\x64\Release\"
   C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v8.0\bin\cudart32_80.dll
   C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v8.0\bin\cudart64_80.dll

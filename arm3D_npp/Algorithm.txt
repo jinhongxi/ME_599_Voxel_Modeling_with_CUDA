@@ -52,4 +52,3 @@ Blurring:
 Next Step:
   1. Calculus how many pixels are different from the original figure
   2. Add an interaction to control the D and E of bone and muscle, and thickness of blend distance and skin
-  3. Visualization

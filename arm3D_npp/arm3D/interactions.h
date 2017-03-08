@@ -27,11 +27,11 @@
 
 const int4 imgSize = { IMG_W, IMG_H, IMG_T, IMG_CC };
 const int4 volSize = { VOL_W, VOL_H, VOL_T, IMG_CC };
-Npp8u *d_img = 0, *d_bone = 0, *d_muscle = 0, *d_fat = 0, *d_skin = 0, *d_bound = 0;
+Npp8u *d_img = 0, *d_bone = 0, *d_muscle = 0, *d_fat = 0, *d_skin = 0, *d_bound = 0, *d_origin = 0;
 cudaEvent_t start, stop;
 
-bool print = true, showBone = true, showMuscle = true, showFat = true, showSkin = true;
-float dist = volSize.z * 1.5f, theta = 0.f, alpha = 1.f, gamma = -0.5f;
+bool print = false, showBone = true, showMuscle = true, showFat = true, showSkin = true, showDiff = false;
+float dist = volSize.z * 1.5f, theta = 0.f, alpha = 0.8f, gamma = 0.f;
 int boneDandE[8] = { 6, 0, 0, 3, 0, 0, 0, 0 };
 int muscleDandE[8] = { 5, 0, 0, 3, 0, 5, 5, 0 };
 int skinThickness = 1;
@@ -46,8 +46,9 @@ void mymenu(int value)
 	case 2: showMuscle = !showMuscle; break;
 	case 3: showFat = !showFat; break;
 	case 4: showSkin = !showSkin; break;
+	case 5: showDiff = !showDiff; break;
 	}
-	boundaryLauncher(d_bound, d_bone, d_muscle, d_fat, d_skin, volSize, showBone, showMuscle, showFat, showSkin);
+	boundaryLauncher(d_bound, d_origin, d_img, d_bone, d_muscle, d_fat, d_skin, volSize, showBone, showMuscle, showFat, showSkin, showDiff);
 	glutPostRedisplay();
 }
 
@@ -59,6 +60,7 @@ void createMenu()
 	glutAddMenuEntry("Muscle", 2);
 	glutAddMenuEntry("Fat", 3);
 	glutAddMenuEntry("Skin", 4);
+	glutAddMenuEntry("Show Difference", 5);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
 
@@ -68,7 +70,7 @@ void keyboard(unsigned char key, int x, int y)
 	if (key == '+') dist -= DELTA;
 	if (key == 60) theta -= 0.1f;
 	if (key == 62) theta += 0.1f;
-	if (key == 8) dist = volSize.z * 1.5f, theta = 0.f, alpha = 1.f, gamma = -0.5f;
+	if (key == 8) dist = volSize.z * 1.5f, theta = 0.f, alpha = 0.8f, gamma = 0.f;
 	if (key == 32) print = true;
 	if (key == 27) exit(0);
 	glutPostRedisplay();
@@ -93,7 +95,8 @@ void printInstructions()
 		"    Reset parameters        : Backspace\n"
 		"    Update figures          : Space\n"
 		"    Exist                   : Esc\n"
-		"    Right-click to show/hide tissues. \n");
+		"    Right-click to show/hide tissues. \n"
+		"    Right-click to show/hide difference. \n");
 }
 
 #endif

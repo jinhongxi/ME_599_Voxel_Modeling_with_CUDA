@@ -462,7 +462,7 @@ void nppLauncher(Npp8u *d_img, Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp
 	imageAddNPP(d_img, d_bone, d_muscle, d_fat, d_skin, volSize);
 }
 
-void boundaryLauncher(Npp8u *d_bound, Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int4 volSize, bool showBone, bool showMuscle, bool showFat, bool showSkin)
+void boundaryLauncher(Npp8u *d_bound, Npp8u *d_origin, Npp8u *d_img, Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int4 volSize, bool showBone, bool showMuscle, bool showFat, bool showSkin, bool showDiff)
 {
 	Npp32s nStep = volSize.x*volSize.w*sizeof(Npp8u);
 	NppiSize oSizeROI = { volSize.x, volSize.y };
@@ -493,6 +493,13 @@ void boundaryLauncher(Npp8u *d_bound, Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_f
 		{
 			Npp8u *pSrc = &d_skin[s*volSize.x*volSize.y*volSize.w];
 			nppiAdd_8u_C3IRSfs(pSrc, nStep, pDst, nStep, oSizeROI, 0);
+		}
+		if (showDiff)
+		{
+			Npp8u *pSrc1 = &d_origin[s*volSize.x*volSize.y*volSize.w];
+			Npp8u *pSrc2 = &d_img[s*volSize.x*volSize.y*volSize.w];
+			nppiSub_8u_C3RSfs(pSrc1, nStep, pSrc2, nStep, pDst, nStep, oSizeROI, 0);
+			
 		}
 	}
 	cudaFree(pDst2);

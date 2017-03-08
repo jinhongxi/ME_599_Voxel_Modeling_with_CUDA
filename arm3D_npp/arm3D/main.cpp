@@ -122,7 +122,7 @@ int main(int argc, char** argv)
 	colorSeparateNPP(d_img, d_bone, d_muscle, d_fat, d_skin, volSize);
 	imageAddNPP(d_origin, d_bone, d_muscle, d_fat, d_skin, volSize);
 
-	nppLauncher(d_img, d_bone, d_muscle, d_fat, d_skin, boneDandE, muscleDandE, blendDist, skinThickness, volSize);
+	nppLauncher(d_img, d_bone, d_muscle, d_fat, d_skin, boneDandE, muscleDandE, blendDist, skinThickness, soften, volSize);
 	boundaryLauncher(d_bound, d_origin, d_img, d_bone, d_muscle, d_fat, d_skin, volSize, showBone, showMuscle, showFat, showSkin, showDiff);
 
 	cudaEventRecord(stop);

@@ -1,6 +1,6 @@
 #include "cuda_func.cuh"
 
-#define STEP 0.05f
+#define STEP 0.02f
 #define EPS 0.1f
 
 int divUp(int a, int A)
@@ -88,7 +88,7 @@ uchar4 rayCastShader(Npp8u *d_bound, int4 volSize, Ray boxRay, float dist)
 		int3 index = posToVolIndex(pos, volSize);
 		index = make_int3(clipWithBounds(index.x, 0, volSize.x - 2), clipWithBounds(index.y, 0, volSize.y - 2), clipWithBounds(index.z, 0, volSize.z - 2));
 		float d = sqrtf(1 - t*t) / 3;
-		if (index.z == 0 || index.z == volSize.z - 2) d *= 3;
+		if (t <= 2 * STEP) d *= 3;
 		shade.x = clip(d_bound[flatten(0, index, volSize)] * d + shade.x);
 		shade.y = clip(d_bound[flatten(1, index, volSize)] * d + shade.y);
 		shade.z = clip(d_bound[flatten(2, index, volSize)] * d + shade.z);
@@ -109,7 +109,7 @@ void renderFloatKernel(uchar4 *d_out, Npp8u *d_bound, int w, int h, int4 volSize
 
 	const uchar4 background = { 0, 0, 0, 0 };
 	float3 source = { 0.f, 0.f, -dist };
-	float3 pix = scrIdxToPos(c, r, w, h, 2 * volSize.z - dist);
+	float3 pix = scrIdxToPos(c, r, w, h, 3 * volSize.z - dist);
 	source = xRotate(source, alpha);
 	source = yRotate(source, theta);
 	source = zRotate(source, gamma);

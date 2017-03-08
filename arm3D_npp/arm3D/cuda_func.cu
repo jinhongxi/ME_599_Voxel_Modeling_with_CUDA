@@ -1,10 +1,17 @@
 #include "cuda_func.cuh"
 
 #define STEP 0.05f
+#define EPS 0.1f
 
 int divUp(int a, int A)
 {
 	return (a + A - 1) / A;
+}
+
+__device__
+unsigned char clip(int n) 
+{ 
+	return n > 255 ? 255 : (n < 0 ? 0 : n); 
 }
 
 __device__
@@ -59,7 +66,7 @@ float3 paramRay(Ray r, float t)
 }
 
 __device__
-bool intersectBox(Ray r, float3 boxmin, float3 boxmax, float *tnear, float *tfar)
+bool intersectBox(float3 pix, float3 source, Ray r, float3 boxmin, float3 boxmax, float *tnear, float *tfar)
 {
 	const float3 invR = make_float3(1.0f) / r.d;
 	const float3 tbot = invR*(boxmin - r.o), ttop = invR*(boxmax - r.o);
@@ -76,14 +83,15 @@ uchar4 rayCastShader(Npp8u *d_bound, int4 volSize, Ray boxRay, float dist)
 	float len = length(boxRay.d);
 	float3 pos = boxRay.o;
 
-	for (float t = 0.f; t < 1.f; t += STEP)
+	for (float t = 0.0f; t < 1.0f; t += STEP)
 	{
 		int3 index = posToVolIndex(pos, volSize);
+		index = make_int3(clipWithBounds(index.x, 0, volSize.x - 2), clipWithBounds(index.y, 0, volSize.y - 2), clipWithBounds(index.z, 0, volSize.z - 2));
 		float d = sqrtf(1 - t*t) / 3;
-		if (index.z == 0 || index.z == volSize.z - 1) d *= 3;
-		shade.x += (int)d_bound[flatten(0, index, volSize)] * d;
-		shade.y += (int)d_bound[flatten(1, index, volSize)] * d;
-		shade.z += (int)d_bound[flatten(2, index, volSize)] * d;
+		if (index.z == 0 || index.z == volSize.z - 2) d *= 3;
+		shade.x = clip(d_bound[flatten(0, index, volSize)] * d + shade.x);
+		shade.y = clip(d_bound[flatten(1, index, volSize)] * d + shade.y);
+		shade.z = clip(d_bound[flatten(2, index, volSize)] * d + shade.z);
 		if (shade.x + shade.y + shade.z >= 100) break;
 		pos = paramRay(boxRay, t);
 	}
@@ -113,8 +121,8 @@ void renderFloatKernel(uchar4 *d_out, Npp8u *d_bound, int w, int h, int4 volSize
 	const Ray pixRay = { source, pix - source };
 	float3 center = { volSize.x / 2.f, volSize.y / 2.f, volSize.z / 2.f };
 	const float3 boxmin = -center;
-	const float3 boxmax = { volSize.x - center.x, volSize.y - center.y, volSize.z - center.z };
-	const bool hitBox = intersectBox(pixRay, boxmin, boxmax, &t0, &t1);
+	const float3 boxmax = center;
+	const bool hitBox = intersectBox(pix, source, pixRay, boxmin, boxmax, &t0, &t1);
 	uchar4 shade;
 
 	if (!hitBox) shade = background;

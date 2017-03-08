@@ -12,6 +12,9 @@ typedef struct {
 int divUp(int a, int A);
 
 __device__
+unsigned char clip(int n);
+
+__device__
 int flatten(int ch, int3 i, int4 volSize);
 
 __device__
@@ -36,7 +39,7 @@ __device__
 float3 paramRay(Ray r, float t);
 
 __device__
-bool intersectBox(Ray r, float3 boxmin, float3 boxmax, float *tnear, float *tfar);
+bool intersectBox(float3 pix, float3 source, Ray r, float3 boxmin, float3 boxmax, float *tnear, float *tfar);
 
 __device__
 uchar4 rayCastShader(Npp8u *d_bound, int4 volSize, Ray boxRay, float dist);

@@ -47,7 +47,7 @@ void importNPP(Npp8u *d_img, int4 imgSize, int4 volSize)
 		NppiRect oSrcROI = { 0, 0, imgSize.x, imgSize.y };
 		double nXFactor = (double)volSize.x / imgSize.x, nYFactor = (double)volSize.y / imgSize.y;
 
-		nppiResize_8u_C3R(d_in, oSrcSize, nSrcStep, oSrcROI, d_out, nDstStep, dstROISize, nXFactor, nYFactor, 1);
+		nppiResize_8u_C3R(d_in, oSrcSize, nSrcStep, oSrcROI, d_out, nDstStep, dstROISize, nXFactor, nYFactor, 2);
 	}
 	cudaMemcpy(h_xy, d_xy, volSize.x*volSize.y*imgSize.z*volSize.w*sizeof(Npp8u), cudaMemcpyDeviceToHost);
 
@@ -72,7 +72,7 @@ void importNPP(Npp8u *d_img, int4 imgSize, int4 volSize)
 		NppiRect oSrcROI = { 0, 0, volSize.y, imgSize.z };
 		double nXFactor = (double)volSize.y / volSize.y, nYFactor = (double)volSize.z / imgSize.z;
 
-		nppiResize_8u_C3R(d_yz, oSrcSize, nSrcStep, oSrcROI, d_xyz, nDstStep, dstROISize, nXFactor, nYFactor, 1);
+		nppiResize_8u_C3R(d_yz, oSrcSize, nSrcStep, oSrcROI, d_xyz, nDstStep, dstROISize, nXFactor, nYFactor, 2);
 
 		cudaMemcpy(h_xyz, d_xyz, volSize.y*volSize.z*volSize.w*sizeof(Npp8u), cudaMemcpyDeviceToHost);
 		for (int s = 0; s < volSize.z; ++s)
@@ -349,15 +349,47 @@ void fatNPP(Npp8u *d_fat, int blendDist, int4 volSize)
 	cudaMalloc(&pKernel, sizeof(h_Kernel));
 	cudaMemcpy(pKernel, h_Kernel, sizeof(h_Kernel), cudaMemcpyHostToDevice);
 
+	NppiSize oMaskSize = { 3, 3 };
+	Npp8u *h_mask1 = (Npp8u*)malloc(oMaskSize.width*oMaskSize.height*sizeof(Npp8u));
+	memset(h_mask1, (Npp8u)0, sizeof(h_mask1));
+	for (int n = 0; n < oMaskSize.height; ++n)
+	{
+		int i = n * oMaskSize.width + oAnchor.x;
+		h_mask1[i] = (Npp8u)1;
+	}
+	Npp8u *pMask1 = 0;
+	cudaMalloc(&pMask1, sizeof(h_mask1));
+	cudaMemcpy(pMask1, h_mask1, sizeof(h_mask1), cudaMemcpyHostToDevice);
+
+	Npp8u *h_mask2 = (Npp8u*)malloc(oMaskSize.width*oMaskSize.height*sizeof(Npp8u));
+	memset(h_mask2, (Npp8u)0, sizeof(h_mask2));
+	for (int m = 0; m < oMaskSize.width; ++m)
+	{
+		int i = oAnchor.y * oMaskSize.width + m;
+		h_mask2[i] = (Npp8u)1;
+	}
+	Npp8u *pMask2 = 0;
+	cudaMalloc(&pMask2, sizeof(h_mask2));
+	cudaMemcpy(pMask2, h_mask2, sizeof(h_mask2), cudaMemcpyHostToDevice);
+
 	for (int s = 0; s < volSize.z; ++s)
 	{
 		Npp8u *pSrc = &d_fat[s*volSize.x*volSize.y*volSize.w];
+		for (int i = 0; i < blendDist / 5; ++i)
+		{
+			nppiErode_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask1, oMaskSize, oAnchor);
+			nppiErode_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pMask2, oMaskSize, oAnchor);
+		}
 		for (int i = 0; i < blendDist; ++i)
 		{
 			nppiFilter_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, pKernel, oKernelSize, oAnchor, nDivisor);
 		}
 	}
 	cudaFree(pKernel);
+	free(h_mask1);
+	cudaFree(pMask1);
+	free(h_mask2);
+	cudaFree(pMask2);
 }
 
 void skinNPP(Npp8u *d_skin, int skinThickness, int4 volSize)
@@ -403,6 +435,71 @@ void skinNPP(Npp8u *d_skin, int skinThickness, int4 volSize)
 	cudaFree(pMask1);
 	free(h_mask2);
 	cudaFree(pMask2);
+}
+
+void antiAliasingNPP(Npp8u *d_img, int channel, int *soften, int4 volSize)
+{
+	Npp32s nStep = volSize.x*volSize.w*sizeof(Npp8u);
+	NppiSize oSizeROI = { volSize.x, volSize.y };
+	const Npp8u threshold = (Npp8u)soften[1];
+	const Npp8u wConstants[3] = { threshold, threshold, threshold };
+	const Npp8u rConstants[3] = { threshold, 0, 0 };
+	const Npp8u gConstants[3] = { 0, threshold, 0 };
+	const Npp8u bConstants[3] = { 0, 0, threshold };
+
+	const Npp32f aTwistW[3][4] = {
+		{ 255, 255, 255, 0 },
+		{ 255, 255, 255, 0 },
+		{ 255, 255, 255, 0 } };
+	const Npp32f aTwistR[3][4] = {
+		{ 255, 0, 0, 0 },
+		{ 0, 0, 0, 0 },
+		{ 0, 0, 0, 0 } };
+	const Npp32f aTwistG[3][4] = {
+		{ 0, 0, 0, 0 },
+		{ 255, 255, 255, 0 },
+		{ 0, 0, 0, 0 } };
+	const Npp32f aTwistB[3][4] = {
+		{ 0, 0, 0, 0 },
+		{ 0, 0, 0, 0 },
+		{ 255, 255, 255, 0 } };
+
+	for (int s = 0; s < volSize.z; ++s)
+	{
+		Npp8u *pSrc = &d_img[s*volSize.x*volSize.y*volSize.w];
+		for (int i = 0; i < soften[0]; ++i)
+		{
+			nppiFilterGauss_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, NPP_MASK_SIZE_3_X_3);
+		}
+		nppiFilterLowPass_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, NPP_MASK_SIZE_3_X_3);
+		switch (channel)
+		{
+		case 0:
+		{
+			nppiSubC_8u_C3IRSfs(rConstants, pSrc, nStep, oSizeROI, 0);
+			nppiColorTwist32f_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, aTwistR);
+			break;
+		}
+		case 1:
+		{
+			nppiSubC_8u_C3IRSfs(gConstants, pSrc, nStep, oSizeROI, 0);
+			nppiColorTwist32f_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, aTwistG);
+			break;
+		}
+		case 2: 
+		{
+			nppiSubC_8u_C3IRSfs(bConstants, pSrc, nStep, oSizeROI, 0);
+			nppiColorTwist32f_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, aTwistB);
+			break;
+		}
+		case 3:
+		{
+			nppiSubC_8u_C3IRSfs(wConstants, pSrc, nStep, oSizeROI, 0);
+			nppiColorTwist32f_8u_C3R(pSrc, nStep, pSrc, nStep, oSizeROI, aTwistW);
+			break;
+		}
+		}
+	}
 }
 
 void trimNPP(Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int4 volSize)
@@ -452,12 +549,15 @@ void trimNPP(Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int4 v
 	cudaFree(pDst2);
 }
 
-void nppLauncher(Npp8u *d_img, Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int *boneDandE, int *muscleDandE, int blendDist, int skinThickness, int4 volSize)
+void nppLauncher(Npp8u *d_img, Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int *boneDandE, int *muscleDandE, int blendDist, int skinThickness, int *soften, int4 volSize)
 {
 	boneNPP(d_bone, boneDandE, volSize);
+	antiAliasingNPP(d_bone, 3, soften, volSize);
 	muscleNPP(d_muscle, muscleDandE, volSize);
+	antiAliasingNPP(d_muscle, 0, soften, volSize);
 	fatNPP(d_fat, blendDist, volSize);
 	skinNPP(d_skin, skinThickness, volSize);
+	antiAliasingNPP(d_skin, 1, soften, volSize);
 	trimNPP(d_bone, d_muscle, d_fat, d_skin, volSize);
 	imageAddNPP(d_img, d_bone, d_muscle, d_fat, d_skin, volSize);
 }
@@ -499,7 +599,6 @@ void boundaryLauncher(Npp8u *d_bound, Npp8u *d_origin, Npp8u *d_img, Npp8u *d_bo
 			Npp8u *pSrc1 = &d_origin[s*volSize.x*volSize.y*volSize.w];
 			Npp8u *pSrc2 = &d_img[s*volSize.x*volSize.y*volSize.w];
 			nppiSub_8u_C3RSfs(pSrc1, nStep, pSrc2, nStep, pDst, nStep, oSizeROI, 0);
-			
 		}
 	}
 	cudaFree(pDst2);

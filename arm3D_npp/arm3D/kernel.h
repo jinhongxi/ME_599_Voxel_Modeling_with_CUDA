@@ -10,6 +10,8 @@ void importNPP(Npp8u *d_img, int4 imgSize, int4 volSize);
 
 void exportNPP(Npp8u *d_img, int4 volSize);
 
+void copyNPP(Npp8u *d_img, Npp8u *d_origin, int4 volSize);
+
 void colorSeparateNPP(Npp8u *d_img, Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int4 volSize);
 
 void imageAddNPP(Npp8u *d_img, Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int4 volSize);
@@ -22,13 +24,13 @@ void fatNPP(Npp8u *d_fat, int blendDist, int4 volSize);
 
 void skinNPP(Npp8u *d_skin, int skinThickness, int4 volSize);
 
-void antiAliasingNPP(Npp8u *d_img, int channel, int soften, int4 volSize);
+void antiAliasingNPP(Npp8u *d_img, int channel, int4 soften, int4 volSize);
 
 void trimNPP(Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int4 volSize);
 
-void nppLauncher(Npp8u *d_img, Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int *boneDandE, int *muscleDandE, int blendDist, int skinThickness, int *soften, int4 volSize);
+void nppLauncher(Npp8u *d_img, Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int *boneDandE, int *muscleDandE, int blendDist, int skinThickness, int4 soften, int4 volSize);
 
-void boundaryLauncher(Npp8u *d_bound, Npp8u *d_origin, Npp8u *d_img, Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int4 volSize, bool showBone, bool showMuscle, bool showFat, bool showSkin, bool showDiff);
+void boundaryLauncher(Npp8u *d_bound, Npp8u *d_origin, Npp8u *d_img, Npp8u *d_bone, Npp8u *d_muscle, Npp8u *d_fat, Npp8u *d_skin, int4 volSize, bool showBone, bool showMuscle, bool showFat, bool showSkin, bool showDiff, bool showOrig);
 
 void kernelLauncher(uchar4 *d_out, Npp8u *d_bound, int w, int h, int4 volSize, float alpha, float theta, float gamma, float dist);
 

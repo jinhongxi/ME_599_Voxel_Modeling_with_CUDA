@@ -32,26 +32,27 @@ const int4 scale = { volSize.x / imgSize.x, volSize.y / imgSize.y, volSize.z / i
 Npp8u *d_img = 0, *d_bone = 0, *d_muscle = 0, *d_fat = 0, *d_skin = 0, *d_bound = 0, *d_origin = 0;
 cudaEvent_t start, stop;
 
-bool print = false, showBone = true, showMuscle = true, showFat = true, showSkin = true, showDiff = false;
+bool print = false, showBone = true, showMuscle = true, showFat = true, showSkin = true, showDiff = false, showOrig = false;
 float dist = fmaxf(volSize.x, fmaxf(volSize.y, volSize.z)), theta = 0.f, alpha = 0.8f, gamma = 0.f;
 int boneDandE[8] = { 6 * scale.x, 0, 0, 3 * scale.y, 0, 0, 0, 0 };
 int muscleDandE[8] = { 5 * scale.x, 0, 0, 3 * scale.y, 0, 5 * scale.x, 5 * scale.y, 0 };
 int skinThickness = 1;
 int blendDist = 5;
-int soften[2] = { 30, 255 / 2 };
+int4 soften = { 30, 30, 50, 255 / 2 };
 
 void mymenu(int value)
 {
 	switch (value)
 	{
 	case 0: return;
-	case 1: showBone = !showBone; break;
-	case 2: showMuscle = !showMuscle; break;
-	case 3: showFat = !showFat; break;
-	case 4: showSkin = !showSkin; break;
-	case 5: showDiff = !showDiff; break;
+	case 1: showOrig = false, showDiff = false, showBone = !showBone; break;
+	case 2: showOrig = false, showDiff = false, showMuscle = !showMuscle; break;
+	case 3: showOrig = false, showDiff = false, showFat = !showFat; break;
+	case 4: showOrig = false, showDiff = false, showSkin = !showSkin; break;
+	case 5: showOrig = false, showDiff = !showDiff; break;
+	case 6: showDiff = false, showOrig = !showOrig; break;
 	}
-	boundaryLauncher(d_bound, d_origin, d_img, d_bone, d_muscle, d_fat, d_skin, volSize, showBone, showMuscle, showFat, showSkin, showDiff);
+	boundaryLauncher(d_bound, d_origin, d_img, d_bone, d_muscle, d_fat, d_skin, volSize, showBone, showMuscle, showFat, showSkin, showDiff, showOrig);
 	glutPostRedisplay();
 }
 
@@ -64,6 +65,7 @@ void createMenu()
 	glutAddMenuEntry("Fat", 3);
 	glutAddMenuEntry("Skin", 4);
 	glutAddMenuEntry("Show Difference", 5);
+	glutAddMenuEntry("Show Original Fig", 6);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
 }
 
@@ -99,7 +101,7 @@ void printInstructions()
 		"    Update figures          : Space\n"
 		"    Exist                   : Esc\n"
 		"\n    Right-click to show/hide tissues. \n"
-		"    Right-click to show/hide difference. \n"
+		"    Right-click to show/hide difference or origin. \n"
 		"    Resolution may be changed in the header file interactions. Do not exceed 3 times of the initial resolution.\n");
 }
 
